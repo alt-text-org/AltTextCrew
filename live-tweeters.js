@@ -63,5 +63,6 @@ function pollLiveTweeters(twtr, list) {
   };
 }
 
+exports.saveEnabled = saveEnabled;
 exports.getListRecord = getListRecord;
 exports.pollLiveTweeters = pollLiveTweeters;

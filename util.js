@@ -1,6 +1,7 @@
 const splitter = require("unicode-default-word-boundary");
 const fetch = require("node-fetch");
 const base64 = require("base64-arraybuffer");
+const fs = require("fs");
 
 function ts() {
   return new Date().toISOString();
@@ -25,7 +26,7 @@ async function extractTargets(text) {
 
   let chunks = text.split(/\s+/g);
   let toCheck = chunks.filter(chunk =>
-    chunk.match(/^https:\/\/t.co\/[^\s]*$/gi)
+    chunk.match(/^https:\/\/t.co\/\S*$/gi)
   );
   if (toCheck.length === 0) {
     return result;
@@ -90,14 +91,14 @@ async function fetchImage(url, oauth, token) {
   );
 
   let mimeType = null;
-  if (url.match(/(\.jpg)|(\.jpeg)/i)) {
+  if (url.match(/jpe?g/i)) {
     mimeType = "image/jpeg";
   } else if (url.match(/\.png/i)) {
     mimeType = "image/png";  
   }
   
   if (!mimeType) {
-    console.log(`Unable to extract MIME type from URL '${url}'`);
+    console.log(`${ts()}: Unable to extract MIME type from URL '${url}'`);
     return null;
   }
   
@@ -113,6 +114,35 @@ async function fetchImage(url, oauth, token) {
   } else {
     return null;
   }
+}
+
+function readLocalImage(path) {
+  let raw = null;
+  try {
+    raw = fs.readFileSync(path)
+  } catch (e) {
+    console.log(`${ts()}: Couldn't find file '${path}'`);
+    return null;
+  }
+
+  if (!raw) {
+    console.log(`${ts()}: File read returned null for '${path}'`);
+    return null;
+  }
+
+  let mimeType = null;
+  if (path.match(/jpe?g/i)) {
+    mimeType = "image/jpeg";
+  } else if (path.match(/png/i)) {
+    mimeType = "image/png";
+  }
+
+  if (!mimeType) {
+    console.log(`${ts()}: Unable to extract MIME type from path '${path}'`);
+    return null;
+  }
+
+  return {mimeType: mimeType, data: raw.toString("base64")};
 }
 
 function splitText(text, maxLen) {
@@ -161,5 +191,6 @@ exports.resolveTCoUrl = resolveTCoUrl;
 exports.extractTargets = extractTargets;
 exports.extractMessageMedia = extractMessageMedia;
 exports.fetchImage = fetchImage;
+exports.readLocalImage = readLocalImage;
 exports.splitText = splitText;
 exports.getTweetImagesAndAlts = getTweetImagesAndAlts;

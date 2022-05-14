@@ -1,16 +1,13 @@
-const fs = require("fs");
-
-const datejs = require("datejs");
 const twitter = require("twitter-api-client");
 const twtrHook = require("twitter-autohook");
 const fetch = require("node-fetch");
-const html = require("node-html-parser");
 const OAuth = require("oauth-1.0a");
 const crypto = require("crypto");
 
 const {
   ts,
   fetchImage,
+  readLocalImage,
   extractMessageMedia,
   extractTargets,
   getTweetImagesAndAlts,
@@ -65,9 +62,9 @@ const config = {
 };
 
 const auxOCRImages = [
-  "https://cdn.glitch.me/0db8e71a-f39d-4218-bcf2-beea4c85af0d%2Falt-text-cont-1.png?v=1637994503361",
-  "https://cdn.glitch.me/0db8e71a-f39d-4218-bcf2-beea4c85af0d%2Falt-text-cont-2.png?v=1637994514263",
-  "https://cdn.glitch.me/0db8e71a-f39d-4218-bcf2-beea4c85af0d%2Falt-text-cont-3.png?v=1637994527811"
+  "img/more-alt-text-1.png",
+  "img/more-alt-text-2.png",
+  "img/more-alt-text-3.png"
 ];
 
 async function ocrDMCmd(twtr, oauth, msg, text) {
@@ -247,8 +244,9 @@ async function handleDMEvent(twtr, oauth, msg) {
         let checkReply = await checkDMCmd(twtr, text);
         reply.push(...checkReply);
       } else if (text.match(/^fetch/i)) {
-        let fetched = await fetchDMCmd(twtr, oauth, msg, text);
-        reply.push(...fetched);
+        reply.push("Fetch is currently disabled, please contact @hbeckpdx with any questions")
+        //let fetched = await fetchDMCmd(twtr, oauth, msg, text);
+        //reply.push(...fetched);
       } else if (text.match(/^help/i)) {
         reply.push(help);
       } else {
@@ -352,11 +350,11 @@ async function handleMention(twtr, oauth, tweet) {
       let uploadFailures = false;
       for (let i = 0; i < splitOcrs.length; i++) {
         let ocrRecord = splitOcrs[i];
-        let imageBase64 = await fetchImage(ocrRecord.img);
-        if (imageBase64) {
+        let imageRecord = await fetchImage(ocrRecord.img);
+        if (imageRecord) {
           let origMediaId = await uploadImageWithAltText(
             twtr,
-            imageBase64,
+            imageRecord.data,
             ocrRecord.split[0]
           );
 
@@ -369,12 +367,12 @@ async function handleMention(twtr, oauth, tweet) {
           ];
 
           for (let j = 1; j < ocrRecord.split.length; j++) {
-            let auxImageBase64 = await fetchImage(auxOCRImages[auxImageIdx]);
+            let auxImage = readLocalImage(auxOCRImages[auxImageIdx]);
             auxImageIdx++;
             auxImageIdx = auxImageIdx % 3;
             let auxMediaId = await uploadImageWithAltText(
               twtr,
-              auxImageBase64,
+              auxImage.data,
               ocrRecord.split[j]
             );
 
