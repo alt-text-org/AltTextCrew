@@ -16,11 +16,10 @@
     "@google-cloud/vision": "^2.3.1",
     "unicode-default-word-boundary": "^13.0.0",
     "node-html-parser": "^3.1.4",
-    "node-fetch": "^2.6.1",
+    "node-fetch": "2.6.6",
     "oauth-1.0a": "^2.2.6",
     "base64-arraybuffer": "^1.0.1",
     "@stablelib/base64": "^1.0.1",
-    "node-fetch": "2.6.6",
     "canvas": "2.8.0"
   },
   "engines": {
