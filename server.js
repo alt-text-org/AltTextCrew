@@ -334,7 +334,7 @@ async function handleMention(twtr, oauth, tweet) {
   }
 
   let cmdReply = [];
-  if (text.match(/ocr/i)) {
+  if (text.match(/(ocr)|(extract text)/i)) {
     let ocrs = await ocrTweetImages(twtr, targetTweet);
     if (ocrs) {
       let splitOcrs = ocrs.map(ocr => {
