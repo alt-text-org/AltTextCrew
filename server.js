@@ -445,9 +445,11 @@ async function handleMention(twtr, oauth, tweet) {
       cmdReply.push(...analysis);
     }
   } else if (text.match(/save/i)) {
+    console.log(`${ts()}: Got save request: ${text}`)
     const imagesAndAlts = getTweetImagesAndAlts(targetTweet);
-    for (const [image, alt] of Object.entries(imagesAndAlts)) {
-      await saveAltTextForImage(image, targetTweet.lang, alt, targetTweet.user.id_str)
+    for (const [imageUrl, alt] of Object.entries(imagesAndAlts)) {
+      let sent = await saveAltTextForImage(imageUrl, targetTweet.lang, alt, targetTweet.user.id_str)
+      console.log(`${ts()}: Saved alt text for ${imageUrl}: ${sent}`)
     }
   } else if (text.match(/explain/i)) {
     if (targetTweet.id_str === tweet.id_str) {
