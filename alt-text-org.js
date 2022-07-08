@@ -32,13 +32,16 @@ function searchablesForImageData(imageData) {
 }
 
 async function searchablesForUrl(url) {
+    console.log("In searchablesForUrl")
     return await loadImageFromUrl(url)
         .then(image => {
+            console.log("Post load ")
             const canvas = createCanvas(image.width, image.height);
             canvas.getContext("2d").drawImage(image);
             return canvas;
         })
         .then(async canvas => {
+            console.log("Post canvas")
             const imageData = canvas.getContext("2d")
                 .getImageData(0, 0, canvas.width, canvas.height);
             return searchablesForImageData(imageData)
@@ -51,6 +54,7 @@ async function searchablesForUrl(url) {
 async function saveAltTextForImage(url, lang, alt, userId) {
     return await searchablesForUrl(url)
         .then(async searchables => {
+            console.log("In post-searchables")
             return await fetch("https://api.alt-text.org/v1/alt-library/save", {
                 method: "POST", headers: {
                     "Content-Type": "application/json"
@@ -292,6 +296,8 @@ function computeDCT(signal) {
  *  4. Stringify and base64 the result. The output is ~3k, so hefty.
  */
 function intensityHist(imageData) {
+    console.log("In intensity")
+
     return new Promise(resolve => {
         const maxIntensity = 255 * 3;
         const buckets = 100;
@@ -319,6 +325,8 @@ function intensityHist(imageData) {
 }
 
 function averageHash(imageData) {
+    console.log("In avg")
+
     return new Promise(resolve => {
         let shrunk = shrinkImage(imageData, 64);
         let greyed = toGreyscale(shrunk);
@@ -330,6 +338,8 @@ function averageHash(imageData) {
 }
 
 function dctHash(imageData) {
+    console.log("In dct")
+
     return new Promise(resolve => {
         let shrunk = shrinkImage(imageData, 32);
         let greyed = toGreyscale(shrunk);
@@ -343,6 +353,7 @@ function dctHash(imageData) {
 }
 
 function sha256Image(imageData) {
+    console.log("In sha")
     return crypto
         .createHash("sha256")
         .update(Buffer.from(imageData.data))
