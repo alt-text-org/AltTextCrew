@@ -1,185 +1,224 @@
-const { ts, getTweetImagesAndAlts } = require("./util");
-const { getTweet } = require("./twtr");
+const {ts, getTweetImagesAndAlts} = require("./util");
+const {getTweet} = require("./twtr");
 
 const crypto = require("crypto");
 const fetch = require("node-fetch");
 const Base64 = require("@stablelib/base64");
-const { createCanvas } = require('canvas')
+const {createCanvas, loadImage, Image} = require('canvas')
 
-async function fetchAltTextForTweet(twtr, tweetId) {
-  let reply = [];
-  let tweet = await getTweet(twtr, tweetId);
-  if (tweet) {
-    let images = Object.keys(getTweetImagesAndAlts(twtr, tweet));
-    if (images.length > 0) {
-      let fetched = await Promise.all(
-        images.map((img, idx) => {
-          return fetchAltTextForUrl(img, tweet.lang || "en")
-            .then(foundText => {
-              if (foundText.length > 0) {
-                return foundText.map(
-                  text =>
-                    `${tweet.user.screen_name}/${tweetId}: ${idx + 1}/${
-                      images.length
-                    }: ${text}`
-                );
-              } else {
-                return [`${tweet.user.screen_name}/${tweetId}: ${idx + 1}/${
-                  images.length
-                }: Couldn't find any saved alt text`];
-              }
-            })
-            .catch(e => {
-              console.log(
-                `Error fetching text for image ${img}: ${JSON.stringify(e)}`
-              );
-              return `${tweet.user.screen_name}/${tweetId}: ${idx + 1}/${
-                images.length
-              }: Error fetching altText`;
-            });
-        })
-      );
-
-      fetched.forEach(texts => reply.push(...texts));
-    } else {
-      reply.push(`${tweet.user.screen_name}/${tweetId}: No images found`);
+function searchablesForImageData(imageData) {
+    return {
+        sha256: sha256Image(imageData),
+        dctHash: dctHash(imageData),
+        averageHash: averageHash(imageData),
+        intensityHist: intensityHist(imageData)
     }
-  } else {
-    reply.push(`Couldn't fetch tweet ${tweetId}`);
-  }
-
-  return reply;
 }
 
-async function fetchAltTextForUrl(image, lang) {
-  let resp = await fetch("https://api.alt-text.org/fetch", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      image_url: image,
-      language: lang || "en"
-    })
-  });
+async function searchablesForUrl(url) {
+    return await loadImage(url)
+        .then(image => {
+            const canvas = createCanvas(image.width, image.height);
+            canvas.getContext("2d").drawImage(image);
+            return canvas;
+        })
+        .then(async canvas => {
+            const imageData = canvas.getContext("2d")
+                .getImageData(0, 0, canvas.width, canvas.height);
+            return searchablesForImageData(imageData)
+        }).catch(err => {
+            console.log(`${ts()}: Error fetching url: ${err}`)
+            return null;
+        })
+}
 
-  if (resp.ok) {
-    return await resp.json();
-  } else if (resp.status === 404) {
-    return {};
-  } else {
-    console.log(
-      `${ts()}: Failed to fetch for image '${image}': Status: ${
-        resp.status
-      } Body: ${await resp.text()}`
-    );
-    return {};
-  }
+async function saveAltTextForImage(url, lang, alt, userId) {
+    return await searchablesForUrl(url)
+        .then(async searchables => {
+            return await fetch("https://api.alt-text.org/v1/alt-library/save", {
+                method: "POST", headers: {
+                    "Content-Type": "application/json"
+                }, body: JSON.stringify({
+                    searchables: searchables,
+                    image_url: url,
+                    language: lang || "en",
+                    alt_text: alt,
+                    id_scope: "twitter",
+                    author_id: userId
+                })
+            }).then(resp => {
+                return resp.statusCode === 204
+            })
+        })
+        .catch(err => {
+            console.log(`${ts()}: Failed to save alt for '${url}: ${err}`);
+            return false;
+        })
+}
+
+async function fetchAltTextForTweet(twtr, tweetId) {
+    let reply = [];
+    let tweet = await getTweet(twtr, tweetId);
+    if (tweet) {
+        let images = Object.keys(getTweetImagesAndAlts(twtr, tweet));
+        if (images.length > 0) {
+            let fetched = await Promise.all(images.map((img, idx) => {
+                return fetchAltTextForUrl(img, tweet.lang || "en")
+                    .then(foundText => {
+                        if (foundText.length > 0) {
+                            return foundText.map(text => `${tweet.user.screen_name}/${tweetId}: ${idx + 1}/${images.length}: ${text}`);
+                        } else {
+                            return [`${tweet.user.screen_name}/${tweetId}: ${idx + 1}/${images.length}: Couldn't find any saved alt text`];
+                        }
+                    })
+                    .catch(e => {
+                        console.log(`Error fetching text for image ${img}: ${JSON.stringify(e)}`);
+                        return `${tweet.user.screen_name}/${tweetId}: ${idx + 1}/${images.length}: Error fetching altText`;
+                    });
+            }));
+
+            fetched.forEach(texts => reply.push(...texts));
+        } else {
+            reply.push(`${tweet.user.screen_name}/${tweetId}: No images found`);
+        }
+    } else {
+        reply.push(`Couldn't fetch tweet ${tweetId}`);
+    }
+
+    return reply;
+}
+
+async function fetchAltTextForUrl(url, lang) {
+    return await searchablesForUrl(url)
+        .then(async searchables => {
+            return await fetch("https://api.alt-text.org/v1/alt-library/fetch", {
+                method: "POST", headers: {
+                    "Content-Type": "application/json"
+                }, body: JSON.stringify({
+                    searches: searchables, language: lang || "en"
+                })
+            }).then(async resp => {
+                if (resp.ok) {
+                    return await resp.json();
+                } else if (resp.status === 404) {
+                    return {};
+                } else {
+                    console.log(`${ts()}: Failed to fetch for url '${url}': Status: ${resp.status} Body: ${await resp.text()}`);
+                    return {};
+                }
+            }).catch(err => {
+                console.log(`${ts()}: Failed to fetch alt for '${url}: ${err}`);
+                return {};
+            })
+        })
+}
+
+function imageBase64ToImageData(imageObj) {
+    const image = new Image();
+    image.src = imageObj.data;
+
+    const canvas = createCanvas(1, 1);
+    const ctx = canvas.getContext("2d");
+    canvas.width = image.width;
+    canvas.height = image.height;
+    ctx.clearRect(0, 0, image.width, image.height)
+    ctx.drawImage(image, 0, 0)
+
+    return ctx.getImageData(0, 0, image.width, image.height);
+}
+
+async function fetchAltForImageBase64(image, lang) {
+    let imageData = imageBase64ToImageData(image)
+    return fetchAltTextForRaw(imageData, lang)
 }
 
 async function fetchAltTextForRaw(imageData, lang) {
-  let searches = {
-    sha256: sha256Image(imageData),
-    dctHash: dctHash(imageData),
-    averageHash: averageHash(imageData),
-    intensityHist: intensityHist(imageData)
-  }
- 
-    let resp = await fetch("https://api.alt-text.org/fetch", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      searches: searches,
-      language: lang || "en"
-    })
-  });
+    let searches = searchablesForImageData(imageData)
 
-  if (resp.ok) {
-    return await resp.json();
-  } else if (resp.status === 404) {
-    return {};
-  } else {
-    console.log(
-      `${ts()}: Failed to fetch for raw image hash: ${searches.sha256}: Status: ${
-        resp.status
-      } Body: ${await resp.text()}`
-    );
-    return {};
-  }
+    let resp = await fetch("https://api.alt-text.org/v1/alt-library/fetch", {
+        method: "POST", headers: {
+            "Content-Type": "application/json"
+        }, body: JSON.stringify({
+            searches: searches, language: lang || "en"
+        })
+    });
+
+    if (resp.ok) {
+        return await resp.json();
+    } else if (resp.status === 404) {
+        return {};
+    } else {
+        console.log(`${ts()}: Failed to fetch for raw image hash: ${searches.sha256}: Status: ${resp.status} Body: ${await resp.text()}`);
+        return {};
+    }
 }
 
 function shrinkImage(imageData, edgeLength) {
-  let canvas = createCanvas(edgeLength, edgeLength);
+    let canvas = createCanvas(edgeLength, edgeLength);
 
-  let ctx = canvas.getContext("2d");
-  ctx.putImageData(imageData, 0, 0);
+    let ctx = canvas.getContext("2d");
+    ctx.putImageData(imageData, 0, 0);
 
-  return ctx.getImageData(0, 0, edgeLength, edgeLength);
+    return ctx.getImageData(0, 0, edgeLength, edgeLength);
 }
 
 function toGreyscale(imageData) {
-  let rgba = new Uint8Array(imageData.data.buffer);
-  let greyscale = new Uint8Array(rgba.length / 4);
-  for (let i = 0, j = 0; i < rgba.length; i += 4, j++) {
-    let intensity =
-      (rgba[i] + rgba[i + 1] + rgba[i + 2]) * (rgba[i + 3] / 255.0);
-    greyscale[j] = Math.round((intensity / 765) * 255);
-  }
+    let rgba = new Uint8Array(imageData.data.buffer);
+    let greyscale = new Uint8Array(rgba.length / 4);
+    for (let i = 0, j = 0; i < rgba.length; i += 4, j++) {
+        let intensity = (rgba[i] + rgba[i + 1] + rgba[i + 2]) * (rgba[i + 3] / 255.0);
+        greyscale[j] = Math.round((intensity / 765) * 255);
+    }
 
-  return greyscale;
+    return greyscale;
 }
 
 function averageColor(pixels) {
-  let sum = pixels.reduce((a, b) => a + b, 0);
-  return Math.round(sum / pixels.length);
+    let sum = pixels.reduce((a, b) => a + b, 0);
+    return Math.round(sum / pixels.length);
 }
 
 function averageFloats(floats) {
-  let sum = floats.reduce((a, b) => a + b, 0);
-  return sum / floats.length;
+    let sum = floats.reduce((a, b) => a + b, 0);
+    return sum / floats.length;
 }
 
 function constructHashBits(pixels, average) {
-  let bits = new Uint8Array(pixels.length);
-  pixels.forEach((val, idx) => (bits[idx] = val >= average ? 1 : 0));
-  return bits;
+    let bits = new Uint8Array(pixels.length);
+    pixels.forEach((val, idx) => (bits[idx] = val >= average ? 1 : 0));
+    return bits;
 }
 
 function compressHashBits(bits) {
-  let bytes = new Uint8Array(bits.length / 8);
-  for (let bit = 0, byteBit = 0; bit < bits.length; bit++, byteBit++) {
-    let byte = Math.floor(bit / 8);
-    byteBit = byteBit % 8;
-    bytes[byte] = bytes[byte] | (bits[bit] << byteBit);
-    console.log(bits[bit] << byteBit);
-  }
+    let bytes = new Uint8Array(bits.length / 8);
+    for (let bit = 0, byteBit = 0; bit < bits.length; bit++, byteBit++) {
+        let byte = Math.floor(bit / 8);
+        byteBit = byteBit % 8;
+        bytes[byte] = bytes[byte] | (bits[bit] << byteBit);
+        console.log(bits[bit] << byteBit);
+    }
 
-  return bytes;
+    return bytes;
 }
 
 function hexEncode(bytes) {
-  return bytes.reduce(
-    (sum, byte) => sum + byte.toString(16).padStart(2, "0"),
-    ""
-  );
+    return bytes.reduce((sum, byte) => sum + byte.toString(16).padStart(2, "0"), "");
 }
 
 function getTopLeft(pixels, edgeLength) {
-  let result = new Array(edgeLength * edgeLength);
-  let originalEdgeLength = Math.sqrt(pixels.length);
-  if (originalEdgeLength !== Math.floor(originalEdgeLength)) {
-    throw new Error("'pixels' must be a square");
-  }
-
-  for (let row = 0, resultIdx = 0; row < edgeLength; row++) {
-    for (let col = 0; col < edgeLength; col++, resultIdx++) {
-      result[resultIdx] = pixels[row * originalEdgeLength + col];
+    let result = new Array(edgeLength * edgeLength);
+    let originalEdgeLength = Math.sqrt(pixels.length);
+    if (originalEdgeLength !== Math.floor(originalEdgeLength)) {
+        throw new Error("'pixels' must be a square");
     }
-  }
 
-  return result;
+    for (let row = 0, resultIdx = 0; row < edgeLength; row++) {
+        for (let col = 0; col < edgeLength; col++, resultIdx++) {
+            result[resultIdx] = pixels[row * originalEdgeLength + col];
+        }
+    }
+
+    return result;
 }
 
 /*===========================================================================*\
@@ -196,37 +235,32 @@ function getTopLeft(pixels, edgeLength) {
 const cosMap = {};
 
 function getCosines(signalLen) {
-  if (cosMap[signalLen]) {
-    return cosMap[signalLen];
-  }
-
-  let cosines = new Array(signalLen * signalLen);
-
-  const PI_N = Math.PI / signalLen;
-
-  for (let k = 0; k < signalLen; k++) {
-    for (let n = 0; n < signalLen; n++) {
-      cosines[n + k * signalLen] = Math.cos(PI_N * (n + 0.5) * k);
+    if (cosMap[signalLen]) {
+        return cosMap[signalLen];
     }
-  }
 
-  cosMap[signalLen] = cosines;
+    let cosines = new Array(signalLen * signalLen);
 
-  return cosines;
+    const PI_N = Math.PI / signalLen;
+
+    for (let k = 0; k < signalLen; k++) {
+        for (let n = 0; n < signalLen; n++) {
+            cosines[n + k * signalLen] = Math.cos(PI_N * (n + 0.5) * k);
+        }
+    }
+
+    cosMap[signalLen] = cosines;
+
+    return cosines;
 }
 
 function computeDCT(signal) {
-  const signalLen = signal.length;
+    const signalLen = signal.length;
 
-  const cosines = getCosines(signalLen);
-  const coefficients = signal.map(() => 0);
+    const cosines = getCosines(signalLen);
+    const coefficients = signal.map(() => 0);
 
-  return coefficients.map((__, ix) =>
-    signal.reduce(
-      (prev, cur, ix_) => prev + cur * cosines[ix_ + ix * signalLen],
-      0
-    )
-  );
+    return coefficients.map((__, ix) => signal.reduce((prev, cur, ix_) => prev + cur * cosines[ix_ + ix * signalLen], 0));
 }
 
 // End Vail Systems code. It is distributed under the MIT license found at the root of this repository
@@ -242,64 +276,65 @@ function computeDCT(signal) {
  *  4. Stringify and base64 the result. The output is ~3k, so hefty.
  */
 function intensityHist(imageData) {
-  return new Promise(resolve => {
-    const maxIntensity = 255 * 3;
-    const buckets = 100;
+    return new Promise(resolve => {
+        const maxIntensity = 255 * 3;
+        const buckets = 100;
 
-    // Floor to two places, don't want to round so we don't accidentally round up.
-    const scale = Math.floor((buckets / maxIntensity) * buckets) / buckets;
+        // Floor to two places, don't want to round so we don't accidentally round up.
+        const scale = Math.floor((buckets / maxIntensity) * buckets) / buckets;
 
-    let counts = new Array(buckets).fill(0);
-    let data = imageData.data;
+        let counts = new Array(buckets).fill(0);
+        let data = imageData.data;
 
-    for (let i = 0; i < data.length; i += 4) {
-      let intensity =
-        (data[i] + data[i + 1] + data[i + 2]) * (data[i + 3] / 255.0);
-      let bucket = Math.floor(intensity * scale);
-      counts[bucket]++;
-    }
+        for (let i = 0; i < data.length; i += 4) {
+            let intensity = (data[i] + data[i + 1] + data[i + 2]) * (data[i + 3] / 255.0);
+            let bucket = Math.floor(intensity * scale);
+            counts[bucket]++;
+        }
 
-    const pixels = data.length / 4;
-    let floats = new Array(buckets);
-    for (let i = 0; i < buckets; i++) {
-      floats[i] = Math.fround(counts[i] / pixels);
-    }
+        const pixels = data.length / 4;
+        let floats = new Array(buckets);
+        for (let i = 0; i < buckets; i++) {
+            floats[i] = Math.fround(counts[i] / pixels);
+        }
 
-    resolve(Base64.encodeURLSafe(new Uint8Array(floats.buffer)));
-  });
+        resolve(Base64.encodeURLSafe(new Uint8Array(floats.buffer)));
+    });
 }
 
 function averageHash(imageData) {
-  return new Promise(resolve => {
-    let shrunk = shrinkImage(imageData, 64);
-    let greyed = toGreyscale(shrunk);
-    let average = averageColor(greyed);
-    let hashBits = constructHashBits(greyed, average);
-    let hash = compressHashBits(hashBits);
-    resolve(hexEncode(hash));
-  });
+    return new Promise(resolve => {
+        let shrunk = shrinkImage(imageData, 64);
+        let greyed = toGreyscale(shrunk);
+        let average = averageColor(greyed);
+        let hashBits = constructHashBits(greyed, average);
+        let hash = compressHashBits(hashBits);
+        resolve(hexEncode(hash));
+    });
 }
 
 function dctHash(imageData) {
-  return new Promise(resolve => {
-    let shrunk = shrinkImage(imageData, 32);
-    let greyed = toGreyscale(shrunk);
-    let dct = computeDCT(greyed);
-    let trimmed = getTopLeft(dct, 8);
-    let avg = averageFloats(trimmed.slice(1));
-    let hashBits = constructHashBits(trimmed, avg);
-    let hash = compressHashBits(hashBits);
-    resolve(hexEncode(hash));
-  });
+    return new Promise(resolve => {
+        let shrunk = shrinkImage(imageData, 32);
+        let greyed = toGreyscale(shrunk);
+        let dct = computeDCT(greyed);
+        let trimmed = getTopLeft(dct, 8);
+        let avg = averageFloats(trimmed.slice(1));
+        let hashBits = constructHashBits(trimmed, avg);
+        let hash = compressHashBits(hashBits);
+        resolve(hexEncode(hash));
+    });
 }
 
 function sha256Image(imageData) {
-  return crypto
-    .createHash("sha256")
-    .update(Buffer.from(imageData.data))
-    .digest("hex");
+    return crypto
+        .createHash("sha256")
+        .update(Buffer.from(imageData.data))
+        .digest("hex");
 }
 
 exports.fetchAltTextForUrl = fetchAltTextForUrl;
 exports.fetchAltTextForRaw = fetchAltTextForRaw;
 exports.fetchAltTextForTweet = fetchAltTextForTweet;
+exports.fetchAltForImageBase64 = fetchAltForImageBase64;
+exports.saveAltTextForImage = saveAltTextForImage;

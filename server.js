@@ -1,6 +1,5 @@
 const twitter = require("twitter-api-client");
 const twtrHook = require("twitter-autohook");
-const fetch = require("node-fetch");
 const OAuth = require("oauth-1.0a");
 const crypto = require("crypto");
 
@@ -29,9 +28,11 @@ const {
 const { ocr, ocrRaw, ocrTweetImages } = require("./ocr");
 const { checkUserTweets, checkTweet } = require("./check");
 const {
-  hashImage,
-  fetchAltText,
-  fetchAltTextForTweet
+  saveAltTextForImage,
+  fetchAltTextForTweet,
+  fetchAltTextForUrl,
+  fetchAltTextForRaw,
+  fetchAltForImageBase64
 } = require("./alt-text-org");
 const { analyzeUrls, getUrls } = require("./analyze-links");
 
@@ -167,9 +168,8 @@ async function fetchDMCmd(twtr, oauth, msg, text) {
   let rawImage = await extractMessageMedia(oauth, config.twitterToken, msg);
   if (rawImage) {
     foundTarget = true;
-    let hash = hashImage(rawImage);
     let lang = text.match(/fetch (..)(?:\s|$)/i) || [null, "en"];
-    let alts = await fetchAltText(hash, null, lang[1]);
+    let alts = await fetchAltTextForRaw(rawImage, null, lang[1]);
     if (alts.length > 0) {
       reply.push(alts[0]);
     } else {
@@ -244,9 +244,8 @@ async function handleDMEvent(twtr, oauth, msg) {
         let checkReply = await checkDMCmd(twtr, text);
         reply.push(...checkReply);
       } else if (text.match(/^fetch/i)) {
-        reply.push("Fetch is currently disabled, please contact @hbeckpdx with any questions")
-        //let fetched = await fetchDMCmd(twtr, oauth, msg, text);
-        //reply.push(...fetched);
+        let fetched = await fetchDMCmd(twtr, oauth, msg, text);
+        reply.push(...fetched);
       } else if (text.match(/^help/i)) {
         reply.push(help);
       } else {
@@ -261,18 +260,6 @@ async function handleDMEvent(twtr, oauth, msg) {
       );
     }
   }
-}
-
-function splitOcrReply(ocrs) {
-  return ocrs.flatMap((ocr, imgIdx) => {
-    let ocrSplit = splitText(ocr.text, 200);
-    return ocrSplit.map(
-      (segment, segmentIdx) =>
-        `Image ${imgIdx + 1}/${ocrs.length}\nPart ${segmentIdx + 1}/${
-          ocrSplit.length
-        }:\n${segment}`
-    );
-  });
 }
 
 const explain = `Alt text allows people who can't see images to know what's in them
@@ -458,26 +445,9 @@ async function handleMention(twtr, oauth, tweet) {
       cmdReply.push(...analysis);
     }
   } else if (text.match(/save/i)) {
-    let imagesAndAlts = getTweetImagesAndAlts(targetTweet);
-    let sent = 0;
+    const imagesAndAlts = getTweetImagesAndAlts(targetTweet);
     for (const [image, alt] of Object.entries(imagesAndAlts)) {
-      fetch("https://api.alt-text.org/save", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          image_url: image,
-          language: targetTweet.lang || "en",
-          alt_text: alt,
-          id_scope: "twitter",
-          author_id: targetTweet.user.id_str
-        })
-      }).catch(e =>
-        console.log(
-          `Failed to save description for ${targetTweet.user.screen_name}/${targetTweet.id_str}: ${e}`
-        )
-      );
+      await saveAltTextForImage(image, targetTweet.lang, alt, targetTweet.user.id_str)
     }
   } else if (text.match(/explain/i)) {
     if (targetTweet.id_str === tweet.id_str) {
