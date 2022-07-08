@@ -7,16 +7,25 @@ const Base64 = require("@stablelib/base64");
 const {createCanvas, loadImage, Image} = require('canvas')
 
 async function loadImageFromUrl(url) {
+    console.log("In loadImageFromUrl")
     return await fetch(url)
-        .then(resp => {
+        .then(async resp => {
+            console.log("In loadImageFromUrl post-fetch")
             if (resp && resp.ok) {
-                return resp.arrayBuffer()
+                return await resp.arrayBuffer()
             } else {
                 console.log(`${ts()}: Failed to fetch ${url}: ${resp.status} ${resp.statusText}`)
                 return null;
             }
         })
-        .then(buf => loadImage(buf))
+        .then(async buf => {
+            if (buf) {
+                console.log("Pre-loadImage")
+                return await loadImage(buf)
+            } else {
+                return null
+            }
+        })
         .catch(err => {
             console.log(`${ts()}: Failed to fetch ${url}: ${err}`)
         })
@@ -35,6 +44,10 @@ async function searchablesForUrl(url) {
     console.log("In searchablesForUrl")
     return await loadImageFromUrl(url)
         .then(image => {
+            if (!image) {
+                throw new Error("Load image failed")
+            }
+
             console.log("Post load ")
             const canvas = createCanvas(image.width, image.height);
             canvas.getContext("2d").drawImage(image);
