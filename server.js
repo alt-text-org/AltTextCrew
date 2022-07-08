@@ -445,8 +445,9 @@ async function handleMention(twtr, oauth, tweet) {
       cmdReply.push(...analysis);
     }
   } else if (text.match(/save/i)) {
-    console.log(`${ts()}: Got save request: ${text}`)
+    console.log(`${ts()}: Got save request: ${text} for ${targetTweet.user}/${targetTweet.id_str}`)
     const imagesAndAlts = getTweetImagesAndAlts(targetTweet);
+    console.log(`Found ${JSON.stringify(imagesAndAlts)}`)
     for (const [imageUrl, alt] of Object.entries(imagesAndAlts)) {
       let sent = await saveAltTextForImage(imageUrl, targetTweet.lang, alt, targetTweet.user.id_str)
       console.log(`${ts()}: Saved alt text for ${imageUrl}: ${sent}`)
