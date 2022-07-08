@@ -6,6 +6,22 @@ const fetch = require("node-fetch");
 const Base64 = require("@stablelib/base64");
 const {createCanvas, loadImage, Image} = require('canvas')
 
+async function loadImageFromUrl(url) {
+    return await fetch(url)
+        .then(resp => {
+            if (resp && resp.ok) {
+                return resp.arrayBuffer()
+            } else {
+                console.log(`${ts()}: Failed to fetch ${url}: ${resp.status} ${resp.statusText}`)
+                return null;
+            }
+        })
+        .then(buf => loadImage(buf))
+        .catch(err => {
+            console.log(`${ts()}: Failed to fetch ${url}: ${err}`)
+        })
+}
+
 function searchablesForImageData(imageData) {
     return {
         sha256: sha256Image(imageData),
@@ -16,7 +32,7 @@ function searchablesForImageData(imageData) {
 }
 
 async function searchablesForUrl(url) {
-    return await loadImage(url)
+    return await loadImageFromUrl(url)
         .then(image => {
             const canvas = createCanvas(image.width, image.height);
             canvas.getContext("2d").drawImage(image);
