@@ -64,9 +64,12 @@ async function saveAltTextForImage(url, lang, alt, userId) {
         .then(async searchables => {
             console.log("In post-searchables")
             return await fetch("https://api.alt-text.org/v1/alt-library/save", {
-                method: "POST", headers: {
-                    "Content-Type": "application/json"
-                }, body: JSON.stringify({
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Accept": "application/json"
+                },
+                body: JSON.stringify({
                     searchables: searchables,
                     image_url: url,
                     language: lang || "en",
@@ -79,6 +82,7 @@ async function saveAltTextForImage(url, lang, alt, userId) {
             })
         })
         .catch(err => {
+            console.log(err)
             console.log(`${ts()}: Failed to save alt for '${url}: ${err}`);
             return false;
         })
