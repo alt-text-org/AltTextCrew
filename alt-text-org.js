@@ -32,12 +32,12 @@ async function loadImageFromUrl(url) {
         })
 }
 
-function searchablesForImageData(imageData) {
+async function searchablesForImageData(imageData) {
     return {
         sha256: sha256Image(imageData),
-        dctHash: dctHash(imageData),
-        averageHash: averageHash(imageData),
-        intensityHist: intensityHist(imageData)
+        dctHash: await dctHash(imageData),
+        averageHash: await averageHash(imageData),
+        intensityHist: await intensityHist(imageData)
     }
 }
 
@@ -167,12 +167,14 @@ async function fetchAltForImageBase64(image, lang) {
 }
 
 async function fetchAltTextForRaw(imageData, lang) {
-    let searches = searchablesForImageData(imageData)
+    let searches = await searchablesForImageData(imageData)
 
     let resp = await fetch("https://api.alt-text.org/v1/alt-library/fetch", {
-        method: "POST", headers: {
+        method: "POST",
+        headers: {
             "Content-Type": "application/json"
-        }, body: JSON.stringify({
+        },
+        body: JSON.stringify({
             searches: searches, language: lang || "en"
         })
     });
@@ -309,7 +311,7 @@ function computeDCT(signal) {
  *     the range [0.0,1.0]
  *  4. Stringify and base64 the result. The output is ~3k, so hefty.
  */
-function intensityHist(imageData) {
+async function intensityHist(imageData) {
     console.log("In intensity")
 
     return new Promise(resolve => {
@@ -338,7 +340,7 @@ function intensityHist(imageData) {
     });
 }
 
-function averageHash(imageData) {
+async function averageHash(imageData) {
     console.log("In avg")
 
     return new Promise(resolve => {
@@ -351,7 +353,7 @@ function averageHash(imageData) {
     });
 }
 
-function dctHash(imageData) {
+async function dctHash(imageData) {
     console.log("In dct")
 
     return new Promise(resolve => {
