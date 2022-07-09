@@ -35,9 +35,9 @@ async function loadImageFromUrl(url) {
 async function searchablesForImageData(imageData) {
     return {
         sha256: sha256Image(imageData)
-        // dctHash: await dctHash(imageData),
-        // averageHash: await averageHash(imageData),
-        // intensityHist: await intensityHist(imageData)
+        dctHash: await dctHash(imageData),
+        averageHash: await averageHash(imageData),
+        intensityHist: await intensityHist(imageData)
     }
 }
 
@@ -235,7 +235,6 @@ function compressHashBits(bits) {
         let byte = Math.floor(bit / 8);
         byteBit = byteBit % 8;
         bytes[byte] = bytes[byte] | (bits[bit] << byteBit);
-        console.log(bits[bit] << byteBit);
     }
 
     return bytes;
