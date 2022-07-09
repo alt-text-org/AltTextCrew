@@ -34,7 +34,7 @@ async function loadImageFromUrl(url) {
 
 async function searchablesForImageData(imageData) {
     return {
-        sha256: sha256Image(imageData)
+        sha256: sha256Image(imageData),
         dctHash: await dctHash(imageData),
         averageHash: await averageHash(imageData),
         intensityHist: await intensityHist(imageData)
