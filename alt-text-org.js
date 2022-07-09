@@ -21,7 +21,7 @@ async function loadImageFromUrl(url) {
         .then(async buf => {
             if (buf) {
                 console.log("Pre-loadImage")
-                return await loadImage(buf)
+                return await loadImage(Buffer.from(buf))
             } else {
                 return null
             }
