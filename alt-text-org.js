@@ -49,11 +49,13 @@ async function searchablesForUrl(url) {
         return null
     }
 
-    console.log("Post load ")
+    console.log(`Post load ${typeof image}`)
     const canvas = createCanvas(image.width, image.height);
-    canvas.getContext("2d").drawImage(image);
+    let context = canvas.getContext("2d");
+    context.drawImage(image);
     console.log("Post canvas")
-    const imageData = canvas.getContext("2d")
+
+    const imageData = context
         .getImageData(0, 0, canvas.width, canvas.height);
 
     return searchablesForImageData(imageData)
