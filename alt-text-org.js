@@ -84,7 +84,6 @@ async function saveAltTextForImage(url, lang, alt, userId) {
             })
         })
         .catch(err => {
-            console.log(err)
             console.log(`${ts()}: Failed to save alt for '${url}: ${err}`);
             return false;
         })
