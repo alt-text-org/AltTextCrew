@@ -28,6 +28,7 @@ async function loadImageFromUrl(url) {
         })
         .catch(err => {
             console.log(`${ts()}: Failed to fetch ${url}: ${err}`)
+            return null
         })
 }
 
@@ -42,26 +43,20 @@ function searchablesForImageData(imageData) {
 
 async function searchablesForUrl(url) {
     console.log("In searchablesForUrl")
-    return await loadImageFromUrl(url)
-        .then(image => {
-            if (!image) {
-                throw new Error("Load image failed")
-            }
+    let image = await loadImageFromUrl(url)
+    if (!image) {
+        console.log(`Failed to load image for ${url}`)
+        return null
+    }
 
-            console.log("Post load ")
-            const canvas = createCanvas(image.width, image.height);
-            canvas.getContext("2d").drawImage(image);
-            return canvas;
-        })
-        .then(async canvas => {
-            console.log("Post canvas")
-            const imageData = canvas.getContext("2d")
-                .getImageData(0, 0, canvas.width, canvas.height);
-            return searchablesForImageData(imageData)
-        }).catch(err => {
-            console.log(`${ts()}: Error fetching url: ${err}`)
-            return null;
-        })
+    console.log("Post load ")
+    const canvas = createCanvas(image.width, image.height);
+    canvas.getContext("2d").drawImage(image);
+    console.log("Post canvas")
+    const imageData = canvas.getContext("2d")
+        .getImageData(0, 0, canvas.width, canvas.height);
+
+    return searchablesForImageData(imageData)
 }
 
 async function saveAltTextForImage(url, lang, alt, userId) {
