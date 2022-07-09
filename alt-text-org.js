@@ -34,10 +34,10 @@ async function loadImageFromUrl(url) {
 
 async function searchablesForImageData(imageData) {
     return {
-        sha256: sha256Image(imageData),
-        dctHash: await dctHash(imageData),
-        averageHash: await averageHash(imageData),
-        intensityHist: await intensityHist(imageData)
+        sha256: sha256Image(imageData)
+        // dctHash: await dctHash(imageData),
+        // averageHash: await averageHash(imageData),
+        // intensityHist: await intensityHist(imageData)
     }
 }
 
@@ -80,7 +80,12 @@ async function saveAltTextForImage(url, lang, alt, userId) {
                     author_id: userId
                 })
             }).then(resp => {
-                return resp.statusCode === 204
+                if (resp.ok) {
+                    return true
+                } else {
+                    console.log(`Unsuccessful save for url '${url}': ${resp.status} ${resp.statusText}`)
+                    return false
+                }
             })
         })
         .catch(err => {
