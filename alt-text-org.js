@@ -144,9 +144,15 @@ async function fetchAltTextForUrl(url, lang) {
         })
 }
 
-function imageBase64ToImageData(imageObj) {
+async function imageBase64ToImageData(imageObj) {
     const image = new Image();
+
+    let prom = new Promise(res => {
+        image.onload = () => res()
+    })
+
     image.src = imageObj.data;
+    await prom
 
     const canvas = createCanvas(1, 1);
     const ctx = canvas.getContext("2d");
