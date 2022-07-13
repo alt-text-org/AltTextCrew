@@ -154,6 +154,7 @@ async function imageBase64ToImageData(imageObj) {
         }
     })
 
+    console.log("Loading")
     image.src = imageObj.data;
     await prom
 
