@@ -169,7 +169,7 @@ async function fetchDMCmd(twtr, oauth, msg, text) {
   if (rawImage) {
     foundTarget = true;
     let lang = text.match(/fetch (..)(?:\s|$)/i) || [null, "en"];
-    let alts = await fetchAltTextForRaw(rawImage, null, lang[1]);
+    let alts = await fetchAltForImageBase64(rawImage, lang[1]);
     if (alts.length > 0) {
       reply.push(alts[0]);
     } else {

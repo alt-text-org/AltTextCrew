@@ -7,10 +7,8 @@ const Base64 = require("@stablelib/base64");
 const {createCanvas, loadImage, Image} = require('canvas')
 
 async function loadImageFromUrl(url) {
-    console.log("In loadImageFromUrl")
     return await fetch(url)
         .then(async resp => {
-            console.log("In loadImageFromUrl post-fetch")
             if (resp && resp.ok) {
                 return await resp.arrayBuffer()
             } else {
@@ -20,7 +18,6 @@ async function loadImageFromUrl(url) {
         })
         .then(async buf => {
             if (buf) {
-                console.log("Pre-loadImage")
                 return await loadImage(Buffer.from(buf))
             } else {
                 return null
@@ -32,39 +29,34 @@ async function loadImageFromUrl(url) {
         })
 }
 
-async function searchablesForImageData(imageData) {
+async function searchablesForImageData(image, imageData) {
     return {
         sha256: sha256Image(imageData),
-        dctHash: await dctHash(imageData),
-        averageHash: await averageHash(imageData),
+        averageHash: await averageHash(image, imageData),
         intensityHist: await intensityHist(imageData)
     }
 }
 
 async function searchablesForUrl(url) {
-    console.log("In searchablesForUrl")
     let image = await loadImageFromUrl(url)
     if (!image) {
-        console.log(`Failed to load image for ${url}`)
+        console.log(`${ts()}: Failed to load image for ${url}`)
         return null
     }
 
-    console.log(`Post load`)
     const canvas = createCanvas(image.width, image.height);
     let context = canvas.getContext("2d");
     context.drawImage(image, 0, 0);
-    console.log("Post canvas")
 
     const imageData = context
         .getImageData(0, 0, canvas.width, canvas.height);
 
-    return searchablesForImageData(imageData)
+    return searchablesForImageData(image, imageData)
 }
 
 async function saveAltTextForImage(url, lang, alt, userId) {
     return await searchablesForUrl(url)
         .then(async searchables => {
-            console.log("In post-searchables")
             return await fetch("https://api.alt-text.org/v1/alt-library/save", {
                 method: "POST",
                 headers: {
@@ -83,13 +75,14 @@ async function saveAltTextForImage(url, lang, alt, userId) {
                 if (resp.ok) {
                     return true
                 } else {
-                    console.log(`Unsuccessful save for url '${url}': ${resp.status} ${resp.statusText}`)
+                    console.log(`${ts()}: Unsuccessful save for url '${url}': ${resp.status} ${resp.statusText}`)
                     return false
                 }
             })
         })
         .catch(err => {
-            console.log(`${ts()}: Failed to save alt for '${url}: ${err}`);
+            console.log(`${ts()}: Failed to save alt for '${url}:`);
+            console.log(err)
             return false;
         })
 }
@@ -110,7 +103,7 @@ async function fetchAltTextForTweet(twtr, tweetId) {
                         }
                     })
                     .catch(e => {
-                        console.log(`Error fetching text for image ${img}: ${JSON.stringify(e)}`);
+                        console.log(`${ts()}: Error fetching text for image ${img}: ${JSON.stringify(e)}`);
                         return `${tweet.user.screen_name}/${tweetId}: ${idx + 1}/${images.length}: Error fetching altText`;
                     });
             }));
@@ -162,16 +155,19 @@ function imageBase64ToImageData(imageObj) {
     ctx.clearRect(0, 0, image.width, image.height)
     ctx.drawImage(image, 0, 0)
 
-    return ctx.getImageData(0, 0, image.width, image.height);
+    return {
+        image: image,
+        imageData: ctx.getImageData(0, 0, image.width, image.height)
+    };
 }
 
-async function fetchAltForImageBase64(image, lang) {
-    let imageData = imageBase64ToImageData(image)
-    return fetchAltTextForRaw(imageData, lang)
+async function fetchAltForImageBase64(imageBase64, lang) {
+    let { image, imageData } = imageBase64ToImageData(imageBase64)
+    return fetchAltTextForRaw(image, imageData, lang)
 }
 
-async function fetchAltTextForRaw(imageData, lang) {
-    let searches = await searchablesForImageData(imageData)
+async function fetchAltTextForRaw(image, imageData, lang) {
+    let searches = await searchablesForImageData(image, imageData)
 
     let resp = await fetch("https://api.alt-text.org/v1/alt-library/fetch", {
         method: "POST",
@@ -193,12 +189,12 @@ async function fetchAltTextForRaw(imageData, lang) {
     }
 }
 
-function shrinkImage(imageData, edgeLength) {
+function shrinkImage(image, imageData, edgeLength) {
     let canvas = createCanvas(edgeLength, edgeLength);
 
     let ctx = canvas.getContext("2d");
-    ctx.putImageData(imageData, 0, 0);
 
+    ctx.drawImage(image, 0, 0, imageData.width, imageData.height, 0, 0, edgeLength, edgeLength)
     return ctx.getImageData(0, 0, edgeLength, edgeLength);
 }
 
@@ -216,11 +212,6 @@ function toGreyscale(imageData) {
 function averageColor(pixels) {
     let sum = pixels.reduce((a, b) => a + b, 0);
     return Math.round(sum / pixels.length);
-}
-
-function averageFloats(floats) {
-    let sum = floats.reduce((a, b) => a + b, 0);
-    return sum / floats.length;
 }
 
 function constructHashBits(pixels, average) {
@@ -241,68 +232,13 @@ function compressHashBits(bits) {
 }
 
 function hexEncode(bytes) {
-    return bytes.reduce((sum, byte) => sum + byte.toString(16).padStart(2, "0"), "");
-}
-
-function getTopLeft(pixels, edgeLength) {
-    let result = new Array(edgeLength * edgeLength);
-    let originalEdgeLength = Math.sqrt(pixels.length);
-    if (originalEdgeLength !== Math.floor(originalEdgeLength)) {
-        throw new Error("'pixels' must be a square");
+    const arr = new Array(bytes);
+    for (let i = 0; i < bytes.length; i++) {
+        arr[i] = bytes[i].toString(16).padStart(2, "0")
     }
 
-    for (let row = 0, resultIdx = 0; row < edgeLength; row++) {
-        for (let col = 0; col < edgeLength; col++, resultIdx++) {
-            result[resultIdx] = pixels[row * originalEdgeLength + col];
-        }
-    }
-
-    return result;
+    return arr.join("");
 }
-
-/*===========================================================================*\
- * Discrete Cosine Transform
- *
- * (c) Vail Systems. Joshua Jung and Ben Bryan. 2015
- *
- * This code is not designed to be highly optimized but as an educational
- * tool to understand the Mel-scale and its related coefficients used in
- * human speech analysis.
- *
- * Some minor modifications by Hannah Kolbeck 2021
-\*===========================================================================*/
-const cosMap = {};
-
-function getCosines(signalLen) {
-    if (cosMap[signalLen]) {
-        return cosMap[signalLen];
-    }
-
-    let cosines = new Array(signalLen * signalLen);
-
-    const PI_N = Math.PI / signalLen;
-
-    for (let k = 0; k < signalLen; k++) {
-        for (let n = 0; n < signalLen; n++) {
-            cosines[n + k * signalLen] = Math.cos(PI_N * (n + 0.5) * k);
-        }
-    }
-
-    cosMap[signalLen] = cosines;
-
-    return cosines;
-}
-
-function computeDCT(signal) {
-    const signalLen = signal.length;
-
-    const cosines = getCosines(signalLen);
-    const coefficients = signal.map(() => 0);
-
-    return coefficients.map((__, ix) => signal.reduce((prev, cur, ix_) => prev + cur * cosines[ix_ + ix * signalLen], 0));
-}
-
-// End Vail Systems code. It is distributed under the MIT license found at the root of this repository
 
 /**
  * Calculates a feature vector for the image based on an intensity histogram.
@@ -315,26 +251,22 @@ function computeDCT(signal) {
  *  4. Stringify and base64 the result. The output is ~3k, so hefty.
  */
 async function intensityHist(imageData) {
-    console.log("In intensity")
-
     return new Promise(resolve => {
-        const maxIntensity = 255 * 3;
-        const buckets = 100;
+        const maxIntensity = 255.0 * 3;
+        const buckets = 128;
 
-        // Floor to two places, don't want to round so we don't accidentally round up.
-        const scale = Math.floor((buckets / maxIntensity) * buckets) / buckets;
-
+        const bucketWidth = maxIntensity / buckets
         let counts = new Array(buckets).fill(0);
         let data = imageData.data;
 
         for (let i = 0; i < data.length; i += 4) {
             let intensity = (data[i] + data[i + 1] + data[i + 2]) * (data[i + 3] / 255.0);
-            let bucket = Math.floor(intensity * scale);
+            let bucket = Math.floor(intensity / bucketWidth)
             counts[bucket]++;
         }
 
-        const pixels = data.length / 4;
-        let floats = new Array(buckets);
+        const pixels = data.length / 4.0;
+        let floats = new Float32Array(buckets);
         for (let i = 0; i < buckets; i++) {
             floats[i] = Math.fround(counts[i] / pixels);
         }
@@ -343,11 +275,10 @@ async function intensityHist(imageData) {
     });
 }
 
-async function averageHash(imageData) {
-    console.log("In avg")
+async function averageHash(image, imageData) {
 
     return new Promise(resolve => {
-        let shrunk = shrinkImage(imageData, 64);
+        let shrunk = shrinkImage(image, imageData, 32);
         let greyed = toGreyscale(shrunk);
         let average = averageColor(greyed);
         let hashBits = constructHashBits(greyed, average);
@@ -356,23 +287,7 @@ async function averageHash(imageData) {
     });
 }
 
-async function dctHash(imageData) {
-    console.log("In dct")
-
-    return new Promise(resolve => {
-        let shrunk = shrinkImage(imageData, 32);
-        let greyed = toGreyscale(shrunk);
-        let dct = computeDCT(greyed);
-        let trimmed = getTopLeft(dct, 8);
-        let avg = averageFloats(trimmed.slice(1));
-        let hashBits = constructHashBits(trimmed, avg);
-        let hash = compressHashBits(hashBits);
-        resolve(hexEncode(hash));
-    });
-}
-
 function sha256Image(imageData) {
-    console.log("In sha")
     return crypto
         .createHash("sha256")
         .update(Buffer.from(imageData.data))
@@ -384,3 +299,7 @@ exports.fetchAltTextForRaw = fetchAltTextForRaw;
 exports.fetchAltTextForTweet = fetchAltTextForTweet;
 exports.fetchAltForImageBase64 = fetchAltForImageBase64;
 exports.saveAltTextForImage = saveAltTextForImage;
+
+saveAltTextForImage("https://pbs.twimg.com/media/FXKV9a_UUAAHyYr?format=jpg&name=medium", "en", "lol homos", 10)
+    .then(result => console.log(`Result ${result}`))
+    .catch(err =>  console.log(err))
