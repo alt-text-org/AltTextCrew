@@ -299,7 +299,3 @@ exports.fetchAltTextForRaw = fetchAltTextForRaw;
 exports.fetchAltTextForTweet = fetchAltTextForTweet;
 exports.fetchAltForImageBase64 = fetchAltForImageBase64;
 exports.saveAltTextForImage = saveAltTextForImage;
-
-saveAltTextForImage("https://pbs.twimg.com/media/FXKV9a_UUAAHyYr?format=jpg&name=medium", "en", "lol homos", 10)
-    .then(result => console.log(`Result ${result}`))
-    .catch(err =>  console.log(err))
