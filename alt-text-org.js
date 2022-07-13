@@ -155,7 +155,7 @@ async function imageBase64ToImageData(imageObj) {
     })
 
     console.log("Loading")
-    image.src = imageObj.data;
+    image.src = "data:image/jpeg;base64, " + imageObj.data;
     await prom
 
     const canvas = createCanvas(1, 1);
