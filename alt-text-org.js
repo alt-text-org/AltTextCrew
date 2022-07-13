@@ -148,7 +148,10 @@ async function imageBase64ToImageData(imageObj) {
     const image = new Image();
 
     let prom = new Promise(res => {
-        image.onload = () => res()
+        image.onload = () => {
+            console.log("Loaded")
+            res()
+        }
     })
 
     image.src = imageObj.data;
@@ -169,6 +172,7 @@ async function imageBase64ToImageData(imageObj) {
 
 async function fetchAltForImageBase64(imageBase64, lang) {
     let { image, imageData } = imageBase64ToImageData(imageBase64)
+    console.log(`Img: ${typeof image} ID: ${typeof imageData}`)
     return fetchAltTextForRaw(image, imageData, lang)
 }
 
