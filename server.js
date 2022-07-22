@@ -290,7 +290,7 @@ async function handleMention(twtr, oauth, tweet) {
     );
   }
 
-  if (!text.match(/@AltTextCrew/i)) {
+  if (!text.match(/@AltTextUtil/i)) {
     console.log(
       `${ts()}: Got mention, but it didn't actually contain my name.`
     );
