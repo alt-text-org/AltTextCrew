@@ -173,9 +173,17 @@ async function fetchDMCmd(twtr, oauth, msg, text) {
       alts.exact.forEach(alt => reply.push(
           `Attached image (exact): ${alt.alt_text}`
       ))
-      alts.fuzzy.forEach(alt => reply.push(
-          `Attached image (Similarity ${Math.round(alt.score * 100)}%): ${alt.alt_text}`
-      ))
+      alts.fuzzy.forEach(alt => {
+        if (alt.score > 0.9) {
+          reply.push(
+              `Attached image (Similarity ${Math.round(alt.score * 100)}%): ${alt.alt_text}`
+          )
+        }
+      })
+
+      if (reply.length === 0) {
+        reply.push("Attached image: No saved description found");
+      }
     } else {
       reply.push("Attached image: No saved description found");
     }
