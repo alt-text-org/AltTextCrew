@@ -174,7 +174,7 @@ async function fetchDMCmd(twtr, oauth, msg, text) {
           `Attached image (exact): ${alt.alt_text}`
       ))
       alts.fuzzy.forEach(alt => reply.push(
-          `Attached image (Similarity ${alt.score}): ${alt.alt_text}`
+          `Attached image (Similarity ${Math.round(alt.score * 100)}%): ${alt.alt_text}`
       ))
     } else {
       reply.push("Attached image: No saved description found");
