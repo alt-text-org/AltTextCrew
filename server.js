@@ -168,6 +168,7 @@ async function fetchDMCmd(twtr, oauth, msg, text) {
     foundTarget = true;
     let lang = text.match(/fetch (..)(?:\s|$)/i) || [null, "en"];
     let alts = await fetchAltForImageBase64(rawImage, lang[1]);
+    console.log(JSON.stringify(alts))
     if (alts) {
       alts.exact.forEach(alt => reply.push(
           `Attached image (exact): ${alt.alt_text}`
