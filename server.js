@@ -174,7 +174,7 @@ async function fetchDMCmd(twtr, oauth, msg, text) {
           `Attached image (exact): ${alt.alt_text}`
       ))
       alts.fuzzy.forEach(alt => {
-        if (alt.score >= 0.9) {
+        if (!alts.exact.some(exact => exact.sha256 === alt.sha256) && alt.score >= 0.95) {
           reply.push(
               `Attached image (Similarity ${Math.floor(alt.score * 100)}%): ${alt.alt_text}`
           )
