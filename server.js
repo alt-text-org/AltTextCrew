@@ -30,8 +30,6 @@ const { checkUserTweets, checkTweet } = require("./check");
 const {
   saveAltTextForImage,
   fetchAltTextForTweet,
-  fetchAltTextForUrl,
-  fetchAltTextForRaw,
   fetchAltForImageBase64
 } = require("./alt-text-org");
 const { analyzeUrls, getUrls } = require("./analyze-links");
@@ -170,8 +168,13 @@ async function fetchDMCmd(twtr, oauth, msg, text) {
     foundTarget = true;
     let lang = text.match(/fetch (..)(?:\s|$)/i) || [null, "en"];
     let alts = await fetchAltForImageBase64(rawImage, lang[1]);
-    if (alts.length > 0) {
-      reply.push(alts[0]);
+    if (alts) {
+      alts.exact.forEach(alt => reply.push(
+          `Attached image (exact): ${alt.alt_text}`
+      ))
+      alts.fuzzy.forEach(alt => reply.push(
+          `Attached image (Similarity ${alt.score}): ${alt.alt_text}`
+      ))
     } else {
       reply.push("Attached image: No saved description found");
     }
@@ -237,7 +240,7 @@ async function handleDMEvent(twtr, oauth, msg) {
           (name, username) =>
             `${name} (@${username}) is going live. Please reply to this tweet if you're able to assist them with descriptions.`
         );
-      } else if (text.match(/^ocr/i)) {
+      } else if (text.match(/^(ocr)|(extract text)/i)) {
         let ocrReply = await ocrDMCmd(twtr, oauth, msg, text);
         reply.push(...ocrReply);
       } else if (text.match(/^check/i)) {

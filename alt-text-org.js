@@ -1,9 +1,9 @@
 const {ts, getTweetImagesAndAlts} = require("./util");
 const {getTweet} = require("./twtr");
+const {DCT, diagonalSnake} = require("./dct")
 
 const crypto = require("crypto");
 const fetch = require("node-fetch");
-const Base64 = require("@stablelib/base64");
 const {createCanvas, loadImage, Image} = require('canvas')
 
 async function loadImageFromUrl(url) {
@@ -27,14 +27,6 @@ async function loadImageFromUrl(url) {
             console.log(`${ts()}: Failed to fetch ${url}: ${err}`)
             return null
         })
-}
-
-async function searchablesForImageData(image, imageData) {
-    return {
-        sha256: sha256Image(imageData),
-        averageHash: await averageHash(image, imageData),
-        intensityHist: await intensityHist(imageData)
-    }
 }
 
 async function searchablesForUrl(url) {
@@ -96,8 +88,12 @@ async function fetchAltTextForTweet(twtr, tweetId) {
             let fetched = await Promise.all(images.map((img, idx) => {
                 return fetchAltTextForUrl(img, tweet.lang || "en")
                     .then(foundText => {
-                        if (foundText.length > 0) {
-                            return foundText.map(text => `${tweet.user.screen_name}/${tweetId}: ${idx + 1}/${images.length}: ${text}`);
+                        if (foundText) {
+                            foundText.exact.map(text =>
+                                `${tweet.user.screen_name}/${tweetId}: ${idx + 1}/${images.length} (exact): ${text.alt_text}`
+                            ).concat(foundText.fuzzy.map(text =>
+                                `${tweet.user.screen_name}/${tweetId}: ${idx + 1}/${images.length} (Similarity: ${text.score}): ${text.alt_text}`
+                            ));
                         } else {
                             return [`${tweet.user.screen_name}/${tweetId}: ${idx + 1}/${images.length}: Couldn't find any saved alt text`];
                         }
@@ -132,14 +128,14 @@ async function fetchAltTextForUrl(url, lang) {
                 if (resp.ok) {
                     return await resp.json();
                 } else if (resp.status === 404) {
-                    return {};
+                    return null;
                 } else {
                     console.log(`${ts()}: Failed to fetch for url '${url}': Status: ${resp.status} Body: ${await resp.text()}`);
-                    return {};
+                    return null;
                 }
             }).catch(err => {
                 console.log(`${ts()}: Failed to fetch alt for '${url}: ${err}`);
-                return {};
+                return null;
             })
         })
 }
@@ -172,7 +168,7 @@ async function imageBase64ToImageData(imageObj) {
 }
 
 async function fetchAltForImageBase64(imageBase64, lang) {
-    let { image, imageData } = await imageBase64ToImageData(imageBase64)
+    let {image, imageData} = await imageBase64ToImageData(imageBase64)
     console.log(`Img: ${typeof image} ID: ${typeof imageData}`)
     return fetchAltTextForRaw(image, imageData, lang)
 }
@@ -193,10 +189,10 @@ async function fetchAltTextForRaw(image, imageData, lang) {
     if (resp.ok) {
         return await resp.json();
     } else if (resp.status === 404) {
-        return {};
+        return null;
     } else {
         console.log(`${ts()}: Failed to fetch for raw image hash: ${searches.sha256}: Status: ${resp.status} Body: ${await resp.text()}`);
-        return {};
+        return null;
     }
 }
 
@@ -220,88 +216,59 @@ function toGreyscale(imageData) {
     return greyscale;
 }
 
-function averageColor(pixels) {
-    let sum = pixels.reduce((a, b) => a + b, 0);
-    return Math.round(sum / pixels.length);
-}
+function getTopLeft(pixels, edgeLength) {
+    let res = Array(edgeLength).fill('').map(() => []);
 
-function constructHashBits(pixels, average) {
-    let bits = new Uint8Array(pixels.length);
-    pixels.forEach((val, idx) => (bits[idx] = val >= average ? 1 : 0));
-    return bits;
-}
-
-function compressHashBits(bits) {
-    let bytes = new Uint8Array(bits.length / 8);
-    for (let bit = 0, byteBit = 0; bit < bits.length; bit++, byteBit++) {
-        let byte = Math.floor(bit / 8);
-        byteBit = byteBit % 8;
-        bytes[byte] = bytes[byte] | (bits[bit] << byteBit);
+    for (let row = 0; row < edgeLength; row++) {
+        for (let col = 0; col < edgeLength; col++) {
+            res[row][col] = pixels[row][col];
+        }
     }
 
-    return bytes;
+    return res;
 }
 
-function hexEncode(bytes) {
-    const arr = new Array(bytes);
-    for (let i = 0; i < bytes.length; i++) {
-        arr[i] = bytes[i].toString(16).padStart(2, "0")
+function toMatrix(arr, rows, cols) {
+    if (arr.length !== rows * cols) {
+        throw new Error("Array length must equal requested rows * columns")
     }
 
-    return arr.join("");
+    const matrix = [];
+    for (let i = 0; i < rows; i++) {
+        matrix[i] = [];
+        for (let j = 0; j < cols; j++) {
+            matrix[i][j] = arr[(i * cols) + j];
+        }
+    }
+
+    return matrix;
 }
 
-/**
- * Calculates a feature vector for the image based on an intensity histogram.
- *  1. Calculate the scale factor, used to bucket values in the range 0 - 765, where 765 is the max value of
- *     (red + green + blue) * alpha for a pixel.
- *  2. For each pixel in the array, calculate the intensity, scale the result, then increment the appropriate
- *     bucket.
- *  3. For each bucket, calculate the fraction of pixels in the image that are in that bucket, will always be in
- *     the range [0.0,1.0]
- *  4. Stringify and base64 the result. The output is ~3k, so hefty.
- */
-async function intensityHist(imageData) {
-    return new Promise(resolve => {
-        const maxIntensity = 255.0 * 3;
-        const buckets = 128;
-
-        const bucketWidth = maxIntensity / buckets
-        let counts = new Array(buckets).fill(0);
-        let data = imageData.data;
-
-        for (let i = 0; i < data.length; i += 4) {
-            let intensity = (data[i] + data[i + 1] + data[i + 2]) * (data[i + 3] / 255.0);
-            let bucket = Math.floor(intensity / bucketWidth)
-            counts[bucket]++;
-        }
-
-        const pixels = data.length / 4.0;
-        let floats = new Float32Array(buckets);
-        for (let i = 0; i < buckets; i++) {
-            floats[i] = Math.fround(counts[i] / pixels);
-        }
-
-        resolve(Base64.encodeURLSafe(new Uint8Array(floats.buffer)));
-    });
+async function searchablesForImageData(image, imageData) {
+    return {
+        sha256: sha256Image(image, imageData),
+        dct: await dctImage(image, imageData)
+    }
 }
 
-async function averageHash(image, imageData) {
-
+function dctImage(image, imageData) {
     return new Promise(resolve => {
         let shrunk = shrinkImage(image, imageData, 32);
         let greyed = toGreyscale(shrunk);
-        let average = averageColor(greyed);
-        let hashBits = constructHashBits(greyed, average);
-        let hash = compressHashBits(hashBits);
-        resolve(hexEncode(hash));
-    });
+        let matrix = toMatrix(greyed, 32, 32)
+        let dct = DCT(matrix);
+        let trimmed = getTopLeft(dct, 8);
+        let snaked = diagonalSnake(trimmed, 8, 8)
+        resolve(snaked)
+    })
 }
 
-function sha256Image(imageData) {
+function sha256Image(image, imageData) {
+    let resized = shrinkImage(image, imageData, 100)
+    let greyscale = toGreyscale(resized)
     return crypto
         .createHash("sha256")
-        .update(Buffer.from(imageData.data))
+        .update(Buffer.from(greyscale))
         .digest("hex");
 }
 
