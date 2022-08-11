@@ -104,7 +104,7 @@ async function fetchImage(url, oauth, token) {
   
   if (resp) {
     if (resp.ok) {
-      return { mimeType: mimeType, data: base64.encode(await resp.arrayBuffer()) };
+      return { mimeType: mimeType, data: `data:${mimeType};base64,${base64.encode(await resp.arrayBuffer())}` };
     } else {
       console.log(
         `${ts()}: Failed to fetch image: ${url}. Status: ${resp.status}`

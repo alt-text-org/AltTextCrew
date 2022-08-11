@@ -196,7 +196,7 @@ async function replyChain(twtr, split, replyToId, replyToUsername) {
       }
 
       replyChainId = await reply(twtr, replyChainId, replyChainUsername, message);
-      replyChainUsername = "AltTextCrew";
+      replyChainUsername = "AltTextUtil";
     }
   }
 }

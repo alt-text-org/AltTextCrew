@@ -11,12 +11,12 @@ const {
   extractTargets,
   getTweetImagesAndAlts,
   splitText
-} = require("./util");
+} = require("./src/util");
 const {
   saveEnabled,
   pollLiveTweeters,
   getListRecord
-} = require("./live-tweeters");
+} = require("./src/live-tweeters");
 const {
   tweet,
   reply,
@@ -24,15 +24,15 @@ const {
   sendDM,
   replyChain,
   uploadImageWithAltText
-} = require("./twtr");
-const { ocr, ocrRaw, ocrTweetImages } = require("./ocr");
-const { checkUserTweets, checkTweet } = require("./check");
+} = require("./src/twtr");
+const { ocr, ocrRaw, ocrTweetImages } = require("./src/ocr");
+const { checkUserTweets, checkTweet } = require("./src/check");
 const {
   saveAltTextForImage,
   fetchAltTextForTweet,
   fetchAltForImageBase64
-} = require("./alt-text-org");
-const { analyzeUrls, getUrls } = require("./analyze-links");
+} = require("./src/alt-text-org");
+const { analyzeUrls, getUrls } = require("./src/analyze-links");
 
 const config = {
   list: process.env.LIST,
