@@ -46,14 +46,15 @@ async function searchablesForUrl(url) {
     return searchablesForImageData(image, imageData)
 }
 
-async function saveAltTextForImage(url, lang, alt, userId) {
+async function saveAltTextForImage(token, url, lang, alt, userId) {
     return await searchablesForUrl(url)
         .then(async searchables => {
             return await fetch("https://api.alt-text.org/v1/alt-library/save", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
-                    "Accept": "application/json"
+                    "Accept": "application/json",
+                    "Authorization": `Bearer ${token}`
                 },
                 body: JSON.stringify({
                     searchables: searchables,
