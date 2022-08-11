@@ -463,7 +463,6 @@ async function handleMention(twtr, oauth, tweet) {
     console.log(`Found ${JSON.stringify(imagesAndAlts)}`)
     for (const [imageUrl, alt] of Object.entries(imagesAndAlts)) {
       console.log(`Attempting to save alt text for '${imageUrl}'`)
-      console.log(`Write token: ${config.writeToken}`)
       let sent = await saveAltTextForImage(config.writeToken, imageUrl, targetTweet.lang, alt, targetTweet.user.id_str)
       console.log(`${ts()}: Saved alt text for ${imageUrl}: ${sent}`)
     }
