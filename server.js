@@ -30,7 +30,7 @@ const { checkUserTweets, checkTweet } = require("./src/check");
 const {
   saveAltTextForImage,
   fetchAltTextForTweet,
-  fetchAltForImageBase64
+  fetchAltTextForBase64
 } = require("./src/alt-text-org");
 const { analyzeUrls, getUrls } = require("./src/analyze-links");
 
@@ -168,14 +168,19 @@ async function fetchDMCmd(twtr, oauth, msg, text) {
   if (rawImage) {
     foundTarget = true;
     let lang = text.match(/fetch (..)(?:\s|$)/i) || [null, "en"];
-    let alts = await fetchAltForImageBase64(rawImage, lang[1]);
+    let alts = await fetchAltTextForBase64(rawImage, lang[1]);
     console.log(JSON.stringify(alts))
     if (alts) {
+      if (alts.ocr) {
+        reply.push(`Extracted text: ${alts.ocr}`)
+      }
+
       alts.exact.forEach(alt => reply.push(
           `Attached image (exact): ${alt.alt_text}`
       ))
+
       alts.fuzzy.forEach(alt => {
-        if (!alts.exact.some(exact => exact.sha256 === alt.sha256) && alt.score >= 0.95) {
+        if (!alts.exact.some(exact => exact.sha256 === alt.sha256) && alt.score >= 0.98) {
           reply.push(
               `Attached image (Similarity ${Math.floor(alt.score * 100)}%): ${alt.alt_text}`
           )
@@ -310,8 +315,8 @@ async function handleMention(twtr, oauth, tweet) {
     return;
   }
 
-  let targetTweet = null;
-  let tweetTargetStr = null;
+  let targetTweet;
+  let tweetTargetStr;
   if (tweet.quoted_status_id_str) {
     tweetTargetStr = "quoted tweet";
     targetTweet = await getTweet(twtr, tweet.quoted_status_id_str);
@@ -426,7 +431,7 @@ async function handleMention(twtr, oauth, tweet) {
             )
             .reduce((prev, curr) => prev + curr);
 
-          imageGroups.forEach((group, idx) => {
+          imageGroups.forEach((group) => {
             for (let idxStart = 0; idxStart < group.length; idxStart += 4) {
               cmdReply.push({
                 text: `Extracted text in image descriptions. Reply ${tweetNum}/${numTweets}`,
@@ -502,10 +507,6 @@ function handleEvent(twtr, oauth) {
       );
     }
   };
-}
-
-async function checkWebhook(hook) {
-  console.log("Webhooks: " + JSON.stringify(await hook.getWebhooks()));
 }
 
 async function startMonitor(twtr, oauth) {

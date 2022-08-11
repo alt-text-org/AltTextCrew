@@ -76,7 +76,10 @@ async function fetchAltTextForUrl(url, lang) {
         method: "POST", headers: {
             "Content-Type": "application/json"
         }, body: JSON.stringify({
-            searches: searchables, language: lang || "en"
+            image: {
+                url: url
+            },
+            language: lang || "en"
         })
     }).then(async resp => {
         if (resp.ok) {
@@ -93,12 +96,7 @@ async function fetchAltTextForUrl(url, lang) {
     })
 }
 
-async function fetchAltForImageBase64(imageBase64, lang) {
-    let {image, imageData} = await imageBase64ToImageData(imageBase64)
-    return fetchAltTextForRaw(image, imageData, lang)
-}
-
-async function fetchAltTextForBase64(imageBase64, lang) {
+async function fetchAltTextForBase64(image, lang) {
     let resp = await fetch("https://api.alt-text.org/library/v1/fetch", {
         method: "POST",
         headers: {
@@ -106,7 +104,7 @@ async function fetchAltTextForBase64(imageBase64, lang) {
         },
         body: JSON.stringify({
             image:{
-                base64: imageBase64
+                base64: `data:${image.mimeType};base64,${image.data}`
             },
             language: lang || "en"
         })
@@ -124,5 +122,5 @@ async function fetchAltTextForBase64(imageBase64, lang) {
 
 exports.fetchAltTextForUrl = fetchAltTextForUrl;
 exports.fetchAltTextForTweet = fetchAltTextForTweet;
-exports.fetchAltForImageBase64 = fetchAltForImageBase64;
+exports.fetchAltTextForBase64 = fetchAltTextForBase64;
 exports.saveAltTextForImage = saveAltTextForImage;
