@@ -100,7 +100,8 @@ const additionalImageText = {
     fa: "توضیحات عکس ادامه دارد",
     fr: "Description de l'image, suite",
     ja: "画像の説明（続き",
-    nl: "overloop van tekst uit het vorige plaatje"
+    nl: "overloop van tekst uit het vorige plaatje",
+    pt: "descrição da imagem continuação"
 }
 
 const auxImageEdgeLength = 1000;
@@ -139,7 +140,8 @@ const responseText = {
     fa: "توضیحات چاپی درعکس را درتوضیحات تصویر میخونید",
     fr: "Texte extrait dans les descriptions d'images",
     ja: "抽出されたテキストは画像の説明にあります",
-    nl: "Tekst uit afbeeldingsbeschrijvingen gehaald"
+    nl: "Tekst uit afbeeldingsbeschrijvingen gehaald",
+    pt: "Texto extraído nas descrições das imagens"
 }
 
 function getResponseText(imageRecords) {
