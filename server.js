@@ -374,7 +374,7 @@ async function handleOcrMention(twtr, tweet, targetTweet, cmdReply) {
         imageGroups.forEach((group) => {
           for (let idxStart = 0; idxStart < group.length; idxStart += 4) {
             cmdReply.push({
-              text: `Extracted text in image descriptions. Reply ${tweetNum}/${numTweets}`,
+              text: `${getResponseText(splitOcrs)} ${tweetNum}/${numTweets}`,
               media: group
                   .slice(idxStart, idxStart + 4)
                   .map(img => img.mediaId)
