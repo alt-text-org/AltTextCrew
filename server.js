@@ -498,7 +498,7 @@ async function handleMention(twtr, oauth, tweet) {
         return;
     }
 
-    const {targetTweet, targetTweetStr} = getTargetTweet(twtr, tweet, text.match(/(ocr)|(extract text)|(save)/i))
+    const {targetTweet, targetTweetStr} = await getTargetTweet(twtr, tweet, text.match(/(ocr)|(extract text)|(save)/i))
 
     if (!targetTweet) {
         await reply(
