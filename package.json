@@ -10,17 +10,18 @@
     "start": "node server.js"
   },
   "dependencies": {
+    "@google-cloud/vision": "^2.3.1",
+    "@stablelib/base64": "^1.0.1",
+    "base64-arraybuffer": "^1.0.1",
+    "canvas": "2.8.0",
+    "canvas-txt": "^3.0.0",
     "datejs": "1.0.0-rc3",
+    "node-fetch": "2.6.6",
+    "node-html-parser": "^3.1.4",
+    "oauth-1.0a": "^2.2.6",
     "twitter-api-client": "^1.5.2",
     "twitter-autohook": "^1.2.1",
-    "@google-cloud/vision": "^2.3.1",
-    "unicode-default-word-boundary": "^13.0.0",
-    "node-html-parser": "^3.1.4",
-    "node-fetch": "2.6.6",
-    "oauth-1.0a": "^2.2.6",
-    "base64-arraybuffer": "^1.0.1",
-    "@stablelib/base64": "^1.0.1",
-    "canvas": "2.8.0"
+    "unicode-default-word-boundary": "^13.0.0"
   },
   "engines": {
     "node": "12.x"

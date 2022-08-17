@@ -25,7 +25,7 @@ const {
   replyChain,
   uploadImageWithAltText
 } = require("./src/twtr");
-const { ocr, ocrRaw, ocrTweetImages } = require("./src/ocr");
+const { ocr, ocrRaw, ocrTweetImages, getAuxImage, getResponseText} = require("./src/ocr");
 const { checkUserTweets, checkTweet } = require("./src/check");
 const {
   saveAltTextForImage,
@@ -280,6 +280,120 @@ async function handleDMEvent(twtr, oauth, msg) {
   }
 }
 
+async function handleOcrMention(twtr, targetTweet, cmdReply) {
+  let ocrs = await ocrTweetImages(twtr, targetTweet);
+  if (ocrs) {
+    let splitOcrs = ocrs.map(ocr => ({
+      img: ocr.img,
+      text: ocr.text,
+      locale: ocr.locale,
+      split: splitText(ocr.text, 1000)
+    }));
+
+    let auxImageIdx = 0;
+    let imageGroups = [];
+    let uploadFailures = false;
+    for (let i = 0; i < splitOcrs.length; i++) {
+      let ocrRecord = splitOcrs[i];
+      let imageRecord = await fetchImage(ocrRecord.img);
+      if (imageRecord) {
+        let origMediaId = await uploadImageWithAltText(
+            twtr,
+            imageRecord.data,
+            ocrRecord.split[0]
+        );
+
+        if (!origMediaId) {
+          uploadFailures = true;
+        }
+
+        let uploadsForImage = [
+          { mediaId: origMediaId, text: ocrRecord.split[0] }
+        ];
+
+        for (let j = 1; j < ocrRecord.split.length; j++) {
+          let auxImage = getAuxImage(ocrRecord.locale, j, ocrRecord.split.length);
+          auxImageIdx++;
+          auxImageIdx = auxImageIdx % 3;
+          let auxMediaId = await uploadImageWithAltText(
+              twtr,
+              auxImage.data,
+              ocrRecord.split[j]
+          );
+
+          if (!auxMediaId) {
+            uploadFailures = true;
+          }
+
+          uploadsForImage.push({
+            mediaId: auxMediaId,
+            text: ocrRecord.split[j]
+          });
+        }
+
+        imageGroups.push(uploadsForImage);
+      } else {
+        console.log(
+            `${ts()}: Failed to fetch image ${ocrRecord.img}. Tweet: ${
+                tweet.user.screen_name
+            }/${tweet.id_str}`
+        );
+        break;
+      }
+    }
+
+    let totalImagesToUpload = imageGroups
+        .map(group => group.length)
+        .reduce((prev, cur) => prev + cur);
+    console.log(`Image groups: ${JSON.stringify(imageGroups)}`);
+
+    if (uploadFailures) {
+      console.log(
+          `${ts()}: Failed to upload images for response to ${
+              tweet.user.screen_name
+          }/${tweet.id_str}`
+      );
+      cmdReply.push(
+          "Failed to re-upload images, if the problem persists please contact @hbeckpdx"
+      );
+    } else {
+      if (totalImagesToUpload <= 4) {
+        cmdReply.push({
+          text: getResponseText(splitOcrs),
+          media: imageGroups.flatMap(group => group.map(img => img.mediaId))
+        });
+      } else {
+        let tweetNum = 1;
+        let numTweets = imageGroups
+            .map(
+                group =>
+                    Math.floor(group.length / 4) + (group.length % 4 === 0 ? 0 : 1)
+            )
+            .reduce((prev, curr) => prev + curr);
+
+        imageGroups.forEach((group) => {
+          for (let idxStart = 0; idxStart < group.length; idxStart += 4) {
+            cmdReply.push({
+              text: `Extracted text in image descriptions. Reply ${tweetNum}/${numTweets}`,
+              media: group
+                  .slice(idxStart, idxStart + 4)
+                  .map(img => img.mediaId)
+            });
+            tweetNum++;
+          }
+        });
+      }
+    }
+  } else {
+    console.log(
+        `${ts()}: No images found on tweet ${tweet.user.screen_name}/${
+            tweet.id_str
+        }`
+    );
+    cmdReply.push("No images found to OCR");
+  }
+}
+
 const explain = `Alt text allows people who can't see images to know what's in them
 
 What in your image is needed to enable someone who can't see it to be a full participant in the conversation?
@@ -340,118 +454,7 @@ async function handleMention(twtr, oauth, tweet) {
 
   let cmdReply = [];
   if (text.match(/(ocr)|(extract text)/i)) {
-    let ocrs = await ocrTweetImages(twtr, targetTweet);
-    if (ocrs) {
-      let splitOcrs = ocrs.map(ocr => {
-        return {
-          img: ocr.img,
-          text: ocr.text,
-          split: splitText(ocr.text, 1000)
-        };
-      });
-
-      let auxImageIdx = 0;
-      let imageGroups = [];
-      let uploadFailures = false;
-      for (let i = 0; i < splitOcrs.length; i++) {
-        let ocrRecord = splitOcrs[i];
-        let imageRecord = await fetchImage(ocrRecord.img);
-        if (imageRecord) {
-          let origMediaId = await uploadImageWithAltText(
-            twtr,
-            imageRecord.data,
-            ocrRecord.split[0]
-          );
-
-          if (!origMediaId) {
-            uploadFailures = true;
-          }
-
-          let uploadsForImage = [
-            { mediaId: origMediaId, text: ocrRecord.split[0] }
-          ];
-
-          for (let j = 1; j < ocrRecord.split.length; j++) {
-            let auxImage = readLocalImage(auxOCRImages[auxImageIdx]);
-            auxImageIdx++;
-            auxImageIdx = auxImageIdx % 3;
-            let auxMediaId = await uploadImageWithAltText(
-              twtr,
-              auxImage.data,
-              ocrRecord.split[j]
-            );
-
-            if (!auxMediaId) {
-              uploadFailures = true;
-            }
-
-            uploadsForImage.push({
-              mediaId: auxMediaId,
-              text: ocrRecord.split[j]
-            });
-          }
-
-          imageGroups.push(uploadsForImage);
-        } else {
-          console.log(
-            `${ts()}: Failed to fetch image ${ocrRecord.img}. Tweet: ${
-              tweet.user.screen_name
-            }/${tweet.id_str}`
-          );
-          break;
-        }
-      }
-
-      let totalImagesToUpload = imageGroups
-        .map(group => group.length)
-        .reduce((prev, cur) => prev + cur);
-      console.log(`Image groups: ${JSON.stringify(imageGroups)}`);
-
-      if (uploadFailures) {
-        console.log(
-          `${ts()}: Failed to upload images for response to ${
-            tweet.user.screen_name
-          }/${tweet.id_str}`
-        );
-        cmdReply.push(
-          "Failed to re-upload images, if the problem persists please contact @hbeckpdx"
-        );
-      } else {
-        if (totalImagesToUpload <= 4) {
-          cmdReply.push({
-            text: "Extracted text in image descriptions.",
-            media: imageGroups.flatMap(group => group.map(img => img.mediaId))
-          });
-        } else {
-          let tweetNum = 1;
-          let numTweets = imageGroups
-            .map(
-              group =>
-                Math.floor(group.length / 4) + (group.length % 4 === 0 ? 0 : 1)
-            )
-            .reduce((prev, curr) => prev + curr);
-
-          imageGroups.forEach((group) => {
-            for (let idxStart = 0; idxStart < group.length; idxStart += 4) {
-              cmdReply.push({
-                text: `Extracted text in image descriptions. Reply ${tweetNum}/${numTweets}`,
-                media: group
-                  .slice(idxStart, idxStart + 4)
-                  .map(img => img.mediaId)
-              });
-              tweetNum++;
-            }
-          });
-        }
-      }
-    } else {
-      console.log(
-        `${ts()}: No images found on tweet ${tweet.user.screen_name}/${
-          tweet.id_str
-        }`
-      );
-      cmdReply.push("No images found to OCR");
-    }
+    await handleOcrMention(twtr, targetTweet, cmdReply)
   } else if (text.match(/analyze link(s?)/i)) {
     let urls = getUrls(targetTweet);
     if (urls.length === 0) {
