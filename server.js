@@ -408,7 +408,7 @@ async function getTargetTweet(twtr, bareTweet, needsImages) {
 
         if (bareTweet.quoted_status_id_str) {
             tweet = await getTweet(twtr, bareTweet.quoted_status_id_str);
-            images = tweet ? Object.keys(getTweetImagesAndAlts(bareTweet)) : []
+            images = tweet ? Object.keys(getTweetImagesAndAlts(tweet)) : []
             console.log(`Images in quoted tweet: ${images.length}`)
             if (images.length > 0) {
                 return {
@@ -420,7 +420,7 @@ async function getTargetTweet(twtr, bareTweet, needsImages) {
 
         if (bareTweet.in_reply_to_status_id_str) {
             tweet = await getTweet(twtr, bareTweet.in_reply_to_status_id_str);
-            images = tweet ? Object.keys(getTweetImagesAndAlts(bareTweet)) : []
+            images = tweet ? Object.keys(getTweetImagesAndAlts(tweet)) : []
             console.log(`Images in parent tweet: ${images.length}`)
             if (images.length > 0) {
                 return {
@@ -431,7 +431,7 @@ async function getTargetTweet(twtr, bareTweet, needsImages) {
 
             if (tweet && tweet.quoted_status_id_str) {
                 tweet = await getTweet(twtr, tweet.quoted_status_id_str);
-                images = tweet ? Object.keys(getTweetImagesAndAlts(bareTweet)) : []
+                images = tweet ? Object.keys(getTweetImagesAndAlts(tweet)) : []
                 console.log(`Images in parent tweet's quoted tweet: ${images.length}`)
                 if (images.length > 0) {
                     return {
@@ -442,7 +442,7 @@ async function getTargetTweet(twtr, bareTweet, needsImages) {
             }
         }
 
-        console.log(`${ts()}: Needed image, but none found for ${bareTweet.user.id_str/bareTweet.id_str}`)
+        console.log(`${ts()}: Needed image, but none found for ${bareTweet.user.id_str}/${bareTweet.id_str}`)
         return {
             targetTweet: null,
             tweetTargetStr: tweetTargetStr
