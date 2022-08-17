@@ -128,7 +128,7 @@ function getAuxImage(locale, num, total) {
     ctx.font = `${auxImageFontPixels / 2}px sans-serif`
     ctx.fillText(`${num}/${total}`, auxImageEdgeLength - 20, auxImageEdgeLength - 20)
 
-    return canvas.toDataURL('image/jpeg').split(",")[1];
+    return canvas.toDataURL().split(",")[1];
 }
 
 const responseText = {

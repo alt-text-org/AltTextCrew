@@ -280,7 +280,7 @@ async function handleDMEvent(twtr, oauth, msg) {
   }
 }
 
-async function handleOcrMention(twtr, targetTweet, cmdReply) {
+async function handleOcrMention(twtr, tweet, targetTweet, cmdReply) {
   let ocrs = await ocrTweetImages(twtr, targetTweet);
   if (ocrs) {
     let splitOcrs = ocrs.map(ocr => ({
@@ -454,7 +454,7 @@ async function handleMention(twtr, oauth, tweet) {
 
   let cmdReply = [];
   if (text.match(/(ocr)|(extract text)/i)) {
-    await handleOcrMention(twtr, targetTweet, cmdReply)
+    await handleOcrMention(twtr, tweet, targetTweet, cmdReply)
   } else if (text.match(/analyze link(s?)/i)) {
     let urls = getUrls(targetTweet);
     if (urls.length === 0) {
