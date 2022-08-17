@@ -445,7 +445,7 @@ async function getTargetTweet(twtr, bareTweet, needsImages) {
         console.log(`${ts()}: Needed image, but none found for ${bareTweet.user.id_str}/${bareTweet.id_str}`)
         return {
             targetTweet: null,
-            tweetTargetStr: tweetTargetStr
+            tweetTargetStr: "no-images-found"
         }
     } else {
         if (bareTweet.quoted_status_id_str) {
@@ -499,6 +499,16 @@ async function handleMention(twtr, oauth, tweet) {
     }
 
     const {targetTweet, targetTweetStr} = await getTargetTweet(twtr, tweet, text.match(/(ocr)|(extract text)|(save)/i))
+
+    if (targetTweetStr === "no-images-found") {
+        await reply(
+            twtr,
+            tweet.id_str,
+            tweet.user.screen_name,
+            "I don't see any images to process, sorry."
+        );
+        return
+    }
 
     if (!targetTweet) {
         await reply(
