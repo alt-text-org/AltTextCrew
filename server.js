@@ -312,7 +312,7 @@ async function handleOcrMention(twtr, tweet, targetTweet, cmdReply) {
         ];
 
         for (let j = 1; j < ocrRecord.split.length; j++) {
-          let auxImage = getAuxImage(ocrRecord.locale, j, ocrRecord.split.length);
+          let auxImage = getAuxImage(ocrRecord.locale, j + 1, ocrRecord.split.length);
           auxImageIdx++;
           auxImageIdx = auxImageIdx % 3;
           let auxMediaId = await uploadImageWithAltText(
