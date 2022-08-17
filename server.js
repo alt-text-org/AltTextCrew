@@ -398,8 +398,8 @@ async function getTargetTweet(twtr, bareTweet, needsImages) {
 
         tweet = await getTweet(twtr, bareTweet.id_str);
         images = tweet ? Object.keys(getTweetImagesAndAlts(tweet)) : []
-        console.log(`Images in tweet: ${images.length}`)
         if (images.length > 0) {
+            console.log(`${ts()}: Found ${images.length} on tweet`)
             return {
                 targetTweet: tweet,
                 tweetTargetStr: "tweet"
@@ -409,8 +409,8 @@ async function getTargetTweet(twtr, bareTweet, needsImages) {
         if (bareTweet.quoted_status_id_str) {
             tweet = await getTweet(twtr, bareTweet.quoted_status_id_str);
             images = tweet ? Object.keys(getTweetImagesAndAlts(tweet)) : []
-            console.log(`Images in quoted tweet: ${images.length}`)
             if (images.length > 0) {
+                console.log(`${ts()}: Found ${images.length} on quoted tweet`)
                 return {
                     targetTweet: tweet,
                     tweetTargetStr: "quoted tweet"
@@ -421,8 +421,8 @@ async function getTargetTweet(twtr, bareTweet, needsImages) {
         if (bareTweet.in_reply_to_status_id_str) {
             tweet = await getTweet(twtr, bareTweet.in_reply_to_status_id_str);
             images = tweet ? Object.keys(getTweetImagesAndAlts(tweet)) : []
-            console.log(`Images in parent tweet: ${images.length}`)
             if (images.length > 0) {
+                console.log(`${ts()}: Found ${images.length} on parent tweet`)
                 return {
                     targetTweet: tweet,
                     tweetTargetStr: "parent tweet"
@@ -432,8 +432,8 @@ async function getTargetTweet(twtr, bareTweet, needsImages) {
             if (tweet && tweet.quoted_status_id_str) {
                 tweet = await getTweet(twtr, tweet.quoted_status_id_str);
                 images = tweet ? Object.keys(getTweetImagesAndAlts(tweet)) : []
-                console.log(`Images in parent tweet's quoted tweet: ${images.length}`)
                 if (images.length > 0) {
+                    console.log(`${ts()}: Found ${images.length} on parent tweet's quoted tweet`)
                     return {
                         targetTweet: tweet,
                         tweetTargetStr: "parent tweet's quoted tweet"
