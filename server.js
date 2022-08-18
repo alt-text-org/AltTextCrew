@@ -519,8 +519,9 @@ async function handleMention(twtr, oauth, tweet) {
         return;
     }
 
+    console.log(`Matches empty? ${text.match(/^\s*@AltTextUtil\s*$/i)}`)
     let cmdReply = [];
-    if (text.match(/(ocr)|(extract text)/i || text.match(/^ *@AltTextUtil *$/i))) {
+    if (text.match(/(ocr)|(extract text)/i || text.match(/^\s*@AltTextUtil\s*$/i))) {
         await handleOcrMention(twtr, tweet, targetTweet, cmdReply)
     } else if (text.match(/analyze link(s?)/i)) {
         let urls = getUrls(targetTweet);
