@@ -519,9 +519,8 @@ async function handleMention(twtr, oauth, tweet) {
         return;
     }
 
-    console.log(`Matches empty? ${text.match(/^\s*@AltTextUtil\s*$/i)}`)
     let cmdReply = [];
-    if (text.match(/(ocr)|(extract text)/i || text.match(/^\s*@AltTextUtil\s*$/i))) {
+    if (text.match(/(ocr)|(extract text)/i) || text.match(/^\s*@AltTextUtil\s*$/i)) {
         await handleOcrMention(twtr, tweet, targetTweet, cmdReply)
     } else if (text.match(/analyze link(s?)/i)) {
         let urls = getUrls(targetTweet);
@@ -550,7 +549,7 @@ async function handleMention(twtr, oauth, tweet) {
         }
     } else {
         console.log(
-            `${ts()}: Got tweet ${tweet.user.screen_name}/${
+            `${ts()}: Got tweet https://twitter.com/status/${tweet.user.screen_name}/${
                 tweet.id_str
             }, but it didn't contain a command. Text: '${text}'`
         );
