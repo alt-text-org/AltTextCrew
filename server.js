@@ -551,7 +551,7 @@ async function handleMention(twtr, oauth, tweet) {
         console.log(
             `${ts()}: Got tweet ${tweet.user.screen_name}/${
                 tweet.id_str
-            }, but it didn't contain a command. Text: ${text}`
+            }, but it didn't contain a command. Text: '${text}'`
         );
         return;
     }
