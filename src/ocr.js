@@ -10,16 +10,18 @@ async function ocr(url) {
     console.log(`${ts()}: Attempting to recognize ${url}`);
     let [result] = await visionClient
         .textDetection(url)
-        .catch(err => console.log(err));
-    let texts = result.textAnnotations;
-    if (texts) {
-        const text = texts
+        .catch(err => {
+            console.log(err)
+            return []
+        });
+    if (result && result.textAnnotations) {
+        const text = result.textAnnotations
             .filter(t => !!t.locale)
             .map(t => t.description)
             .join(" ")
             .replace(/(\r\n|\n|\r)/gm, " ");
 
-        const locales = texts
+        const locales = result.textAnnotations
             .filter(t => !!t.locale)
             .reduce((loc, t) => {
                 loc[t.locale] = (loc[t.locale] || 0) + 1
@@ -50,7 +52,10 @@ async function ocrRaw(rawImage) {
 
     let result = await visionClient
         .batchAnnotateImages({requests})
-        .catch(err => console.log(err));
+        .catch(err => {
+            console.log(err)
+            return null;
+        });
 
     if (
         result[0] &&
@@ -86,7 +91,11 @@ async function ocrTweetImages(twtr, tweet) {
                         return {img: img, text: "Error extracting text", locale: "default"};
                     });
             })
-        );
+        ).catch(err => {
+            console.log(`${ts()}: Error attempting to recognize images on https://twitter.com/status/${tweet.user.screen_name}/${tweet.id_str}`)
+            console.log(err)
+            return null
+        });
     } else {
         return null
     }
