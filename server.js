@@ -520,7 +520,7 @@ async function handleMention(twtr, oauth, tweet) {
     }
 
     let cmdReply = [];
-    if (text.match(/(ocr)|(extract text)/i)) {
+    if (text.match(/(ocr)|(extract text)/i || text.match(/^\s*@AltTextUtil\s*$/i))) {
         await handleOcrMention(twtr, tweet, targetTweet, cmdReply)
     } else if (text.match(/analyze link(s?)/i)) {
         let urls = getUrls(targetTweet);
