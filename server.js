@@ -391,7 +391,6 @@ async function getTargetTweet(twtr, bareTweet, needsImages) {
     let targetTweet;
     let tweetTargetStr = "tweet";
 
-
     if (needsImages) {
         let images;
         let tweet;
@@ -498,9 +497,9 @@ async function handleMention(twtr, oauth, tweet) {
         return;
     }
 
-    const {targetTweet, targetTweetStr} = await getTargetTweet(twtr, tweet, text.match(/(ocr)|(extract text)|(save)/i))
+    const {targetTweet, tweetTargetStr} = await getTargetTweet(twtr, tweet, text.match(/(ocr)|(extract text)|(save)/i))
 
-    if (targetTweetStr === "no-images-found") {
+    if (tweetTargetStr === "no-images-found") {
         await reply(
             twtr,
             tweet.id_str,
@@ -527,10 +526,10 @@ async function handleMention(twtr, oauth, tweet) {
         let urls = getUrls(targetTweet);
         if (urls.length === 0) {
             cmdReply.push(
-                `Hmm, I don't see any links to analyze on ${targetTweetStr}.`
+                `Hmm, I don't see any links to analyze on ${tweetTargetStr}.`
             );
         } else {
-            let analysis = await analyzeUrls(urls, targetTweetStr);
+            let analysis = await analyzeUrls(urls, tweetTargetStr);
             cmdReply.push(...analysis);
         }
     } else if (text.match(/save/i)) {
