@@ -497,7 +497,7 @@ async function handleMention(twtr, oauth, tweet) {
         return;
     }
 
-    const {targetTweet, tweetTargetStr} = await getTargetTweet(twtr, tweet, text.match(/(ocr)|(extract text)|(save)|(^\s*@AltTextUtil\s*$)/i))
+    const {targetTweet, tweetTargetStr} = await getTargetTweet(twtr, tweet, text.match(/(ocr)|(extract text)|(save)|(^(\s*@\w+)*\s*@AltTextUtil\s*$)/i))
 
     if (tweetTargetStr === "no-images-found") {
         await reply(
@@ -520,7 +520,7 @@ async function handleMention(twtr, oauth, tweet) {
     }
 
     let cmdReply = [];
-    if (text.match(/(ocr)|(extract text)/i) || text.match(/^\s*@AltTextUtil\s*$/i)) {
+    if (text.match(/(ocr)|(extract text)/i) || text.match(/^(\s*@\w+)*\s*@AltTextUtil\s*$/i)) {
         await handleOcrMention(twtr, tweet, targetTweet, cmdReply)
     } else if (text.match(/analyze link(s?)/i)) {
         let urls = getUrls(targetTweet);
