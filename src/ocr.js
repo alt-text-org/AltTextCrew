@@ -95,6 +95,7 @@ async function ocrTweetImages(twtr, tweet) {
 const additionalImageText = {
     default: "Alt Text Continued",
     ca: "Continuació de la descripció de les imatges",
+    de: "Bildbeschreibung fortgesetzt",
     en: "Alt Text Continued",
     es: "Continuación de la descripción de las imágenes",
     fa: "توضیحات عکس ادامه دارد",
@@ -135,6 +136,7 @@ function getAuxImage(locale, num, total) {
 const responseText = {
     default: "Extracted text in image descriptions",
     ca: "El text extret és a les descripcions de les imatges",
+    de: "Extrahierter Text in Bildbeschreibungen",
     en: "Extracted text in image descriptions",
     es: "El texto extraído está en las descripciones de las imágenes",
     fa: "توضیحات چاپی درعکس را درتوضیحات تصویر میخونید",
