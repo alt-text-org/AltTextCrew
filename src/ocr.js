@@ -70,7 +70,7 @@ async function ocrTweetImages(twtr, tweet) {
     let images = Object.keys(getTweetImagesAndAlts(tweet));
     if (images.length > 0) {
         return await Promise.all(
-            images.map((img, idx) => {
+            images.map((img) => {
                 return ocr(img)
                     .then(imgOcr => {
                         if (imgOcr) {
