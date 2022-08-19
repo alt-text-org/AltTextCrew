@@ -298,7 +298,7 @@ async function handleDMEvent(twtr, oauth, msg) {
                 let fetched = await fetchDMCmd(twtr, oauth, msg, text);
                 reply.push(...fetched);
             } else if (text.match(/^describe/i)) {
-                let descReply = describeDMCmd(twtr, oauth, msg, text)
+                let descReply = await describeDMCmd(twtr, oauth, msg, text)
                 reply.push(...descReply)
             } else if (text.match(/^help/i)) {
                 reply.push(help);
