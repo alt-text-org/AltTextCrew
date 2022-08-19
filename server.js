@@ -497,7 +497,10 @@ async function handleMention(twtr, oauth, tweet) {
         return;
     }
 
-    const {targetTweet, tweetTargetStr} = await getTargetTweet(twtr, tweet, text.match(/(ocr)|(extract text)|(save)|(^(\s*@\w+)*\s*@AltTextUtil\s*$)/i))
+    const {
+        targetTweet,
+        tweetTargetStr
+    } = await getTargetTweet(twtr, tweet, text.match(/(ocr)|(extract text)|(save)|(^(\s*@\w+)*\s*@AltTextUtil\s*$)/i))
 
     if (tweetTargetStr === "no-images-found") {
         await reply(
@@ -565,23 +568,23 @@ async function handleMention(twtr, oauth, tweet) {
 
 function handleEvent(twtr, oauth) {
     return async event => {
-            if (event.direct_message_events && event.direct_message_events.forEach) {
-                // console.log(`Got webhook event: ${JSON.stringify(event)}`);
-                event.direct_message_events.forEach(msg =>
-                    handleDMEvent(twtr, oauth, msg).catch(err => {
-                        console.log(`${ts()}: Uncaught error in DM handler`)
-                        console.log(err)
-                    })
-                );
-            } else if (event.tweet_create_events && event.tweet_create_events.forEach) {
-                // console.log(`Got webhook event: ${JSON.stringify(event)}`);
-                event.tweet_create_events.forEach(tweet =>
-                    handleMention(twtr, oauth, tweet).catch(err => {
-                        console.log(`${ts()}: Uncaught error in mention handler`)
-                        console.log(err)
-                    })
-                );
-            }
+        if (event.direct_message_events && event.direct_message_events.forEach) {
+            // console.log(`Got webhook event: ${JSON.stringify(event)}`);
+            event.direct_message_events.forEach(msg =>
+                handleDMEvent(twtr, oauth, msg).catch(err => {
+                    console.log(`${ts()}: Uncaught error in DM handler`)
+                    console.log(err)
+                })
+            );
+        } else if (event.tweet_create_events && event.tweet_create_events.forEach) {
+            // console.log(`Got webhook event: ${JSON.stringify(event)}`);
+            event.tweet_create_events.forEach(tweet =>
+                handleMention(twtr, oauth, tweet).catch(err => {
+                    console.log(`${ts()}: Uncaught error in mention handler`)
+                    console.log(err)
+                })
+            );
+        }
     };
 }
 
