@@ -32,6 +32,7 @@ const {
     fetchAltTextForBase64
 } = require("./src/alt-text-org");
 const {analyzeUrls, getUrls} = require("./src/analyze-links");
+const {describeRaw, describeUrl, describeTweetImages} = require("./src/describe");
 
 const config = {
     list: process.env.LIST,
@@ -57,18 +58,60 @@ const config = {
         consumer_secret: process.env.TWITTER_CONSUMER_SECRET,
         ngrok_secret: process.env.NGROK_SECRET,
         env: "prod"
+    },
+    azure: {
+        descriptionKey: process.env.AZURE_KEY,
+        descriptionEndpoint: process.env.AZURE_DESCRIPTION_ENDPOINT
     }
 };
 
+async function describeDMCmd(twtr, oauth, msg, text) {
+    let reply = [];
+    let targets = await extractTargets(text);
+    let rawImage = await extractMessageMedia(oauth, config.twitterToken, msg);
+
+    if (rawImage) {
+        const description = await describeRaw(config.azure.descriptionEndpoint, config.azure.descriptionKey, rawImage)
+        if (description) {
+            reply.push(description);
+        } else {
+            reply.push("Couldn't describe attached image");
+        }
+    } else if (targets.web.size > 0) {
+        for (const url of targets.web) {
+            const description = await describeUrl(config.azure.descriptionEndpoint, config.azure.descriptionKey, url)
+            if (description) {
+                reply.push(`${url}: ${description}`);
+            } else {
+                reply.push(`${url}: No description found`);
+            }
+        }
+    } else if (targets.tweet.size > 0) {
+        for (const tweetId of targets.tweet) {
+            let tweet = await getTweet(twtr, tweetId);
+            if (tweet) {
+                const descriptions = await describeTweetImages(config.azure.descriptionEndpoint, config.azure.descriptionKey, tweet);
+                let annotated = descriptions.map(
+                    desc => `${tweet.user.screen_name}'s tweet: ${desc.text}`
+                );
+                reply.push(...annotated);
+            } else {
+                reply.push(`Couldn't fetch tweet: ${tweetId}`);
+            }
+        }
+    } else {
+        reply.push("I don't see anything to describe");
+    }
+
+    return reply;
+}
+
 async function ocrDMCmd(twtr, oauth, msg, text) {
     let reply = [];
-    let foundTarget = false;
     let targets = await extractTargets(text);
     let rawImage = await extractMessageMedia(oauth, config.twitterToken, msg);
     if (rawImage) {
-        foundTarget = true;
         let imageOcr = await ocrRaw(rawImage)
-            .catch()
             .catch(e => {
                 console.log("Error OCRing image: " + JSON.stringify(e));
                 return null;
@@ -79,7 +122,6 @@ async function ocrDMCmd(twtr, oauth, msg, text) {
             reply.push("Couldn't extract text from attached image");
         }
     } else if (targets.web.size > 0) {
-        foundTarget = true;
         for (const url of targets.web) {
             let imgOcr = await ocr(url);
             if (imgOcr) {
@@ -89,22 +131,19 @@ async function ocrDMCmd(twtr, oauth, msg, text) {
             }
         }
     } else if (targets.tweet.size > 0) {
-        foundTarget = true;
         for (const tweetId of targets.tweet) {
             let tweet = await getTweet(twtr, tweetId);
             if (tweet) {
                 let ocrs = await ocrTweetImages(twtr, tweet);
                 let annotated = ocrs.map(
-                    ocr => `${tweet.user.screen_name}/${tweetId}: ${ocr.text}`
+                    ocr => `${tweet.user.screen_name}'s tweet: ${ocr.text}`
                 );
                 reply.push(...annotated);
             } else {
                 reply.push(`Couldn't fetch tweet: ${tweetId}`);
             }
         }
-    }
-
-    if (!foundTarget) {
+    } else {
         reply.push("I don't see anything to OCR");
     }
 
@@ -209,14 +248,15 @@ async function fetchDMCmd(twtr, oauth, msg, text) {
 const help = `Tweet/Reply commands: 
 To use these, tag the bot in either the tweet to be examined or a reply to that tweet. If a tweet is a reply, only the parent will be processed. 
 Save: Saves alt text to the alt-text.org database for any images on the tweet or its parent.
-OCR: Attempts tp extract text from the images on a tweet or its parent.
+OCR or extract text: Attempts tp extract text from the images on a tweet or its parent.
 Analyze links: Produces a report on alt text usage for any linked websites.
 Explain: Respond with a quick explanation of alt text and how to add it.
 
 DM Commands:
 fetch <images or tweets>: Searches the alt-text.org database for alt text for an image or the images on a tweet.
-ocr <images or tweets>: Attempts to extract text from an image or the images on a tweet.
+ocr or extract text <images or tweets>: Attempts to extract text from an image or the images on a tweet.
 check <tweets or users>: Checks a tweet for alt text on images, or produces a report on a user's alt text usage.
+describe <images or tweets>: Attempts to describe an image or the images on a tweet
 help: Print this help message.`;
 
 async function handleDMEvent(twtr, oauth, msg) {
@@ -257,6 +297,9 @@ async function handleDMEvent(twtr, oauth, msg) {
             } else if (text.match(/^fetch/i)) {
                 let fetched = await fetchDMCmd(twtr, oauth, msg, text);
                 reply.push(...fetched);
+            } else if (text.match(/^describe/i)) {
+                let descReply = describeDMCmd(twtr, oauth, msg, text)
+                reply.push(...descReply)
             } else if (text.match(/^help/i)) {
                 reply.push(help);
             } else {
