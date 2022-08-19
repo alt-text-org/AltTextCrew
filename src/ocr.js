@@ -50,21 +50,21 @@ async function ocrRaw(rawImage) {
         }
     ];
 
-    let result = await visionClient
+    let [result] = await visionClient
         .batchAnnotateImages({requests})
         .catch(err => {
             console.log(err)
-            return null;
+            return [];
         });
 
     if (
-        result[0] &&
-        result[0].responses &&
-        result[0].responses[0] &&
-        result[0].responses[0].fullTextAnnotation &&
-        result[0].responses[0].fullTextAnnotation.text
+        result &&
+        result.responses &&
+        result.responses[0] &&
+        result.responses[0].fullTextAnnotation &&
+        result.responses[0].fullTextAnnotation.text
     ) {
-        return result[0].responses[0].fullTextAnnotation.text;
+        return result.responses[0].fullTextAnnotation.text;
     } else {
         console.log("No text found. Full response: " + JSON.stringify(result));
         return null;
@@ -110,8 +110,8 @@ const additionalImageText = {
     fa: "توضیحات عکس ادامه دارد",
     fr: "Description de l'image, suite",
     ja: "画像の説明（続き",
-    nl: "overloop van tekst uit het vorige plaatje",
-    pt: "descrição da imagem continuação"
+    nl: "Overloop van tekst uit het vorige plaatje",
+    pt: "Descrição da imagem continuação"
 }
 
 const auxImageEdgeLength = 1000;
