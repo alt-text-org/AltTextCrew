@@ -565,22 +565,23 @@ async function handleMention(twtr, oauth, tweet) {
 
 function handleEvent(twtr, oauth) {
     return async event => {
-        try {
             if (event.direct_message_events && event.direct_message_events.forEach) {
                 // console.log(`Got webhook event: ${JSON.stringify(event)}`);
                 event.direct_message_events.forEach(msg =>
-                    handleDMEvent(twtr, oauth, msg)
+                    handleDMEvent(twtr, oauth, msg).catch(err => {
+                        console.log(`${ts()}: Uncaught error in DM handler`)
+                        console.log(err)
+                    })
                 );
             } else if (event.tweet_create_events && event.tweet_create_events.forEach) {
                 // console.log(`Got webhook event: ${JSON.stringify(event)}`);
                 event.tweet_create_events.forEach(tweet =>
-                    handleMention(twtr, oauth, tweet)
+                    handleMention(twtr, oauth, tweet).catch(err => {
+                        console.log(`${ts()}: Uncaught error in mention handler`)
+                        console.log(err)
+                    })
                 );
             }
-        } catch (err) {
-            console.log(`${ts()}: Uncaught error in event handler`)
-            console.log(err)
-        }
     };
 }
 
