@@ -29,7 +29,7 @@ const {checkUserTweets, checkTweet} = require("./src/check");
 const {
     saveAltTextForImage,
     fetchAltTextForTweet,
-    fetchAltTextForBase64
+    fetchAltTextForBase64, fetchAltTextForUrl
 } = require("./src/alt-text-org");
 const {analyzeUrls, getUrls} = require("./src/analyze-links");
 const {describeRaw, describeUrl, describeTweetImages} = require("./src/describe");
@@ -294,7 +294,7 @@ async function handleDMEvent(twtr, oauth, msg) {
             } else if (text.match(/^check/i)) {
                 let checkReply = await checkDMCmd(twtr, text);
                 reply.push(...checkReply);
-            } else if (text.match(/^fetch/i)) {
+            } else if (text.match(/^(fetch)|(search)/i)) {
                 let fetched = await fetchDMCmd(twtr, oauth, msg, text);
                 reply.push(...fetched);
             } else if (text.match(/^describe/i)) {
@@ -319,7 +319,7 @@ async function handleDMEvent(twtr, oauth, msg) {
 async function handleOcrMention(twtr, tweet, targetTweet, cmdReply) {
     let ocrs = await ocrTweetImages(twtr, targetTweet);
     if (ocrs) {
-        const anySucceeded = ocrs.map(ocr => ocr.extracted).reduce((a,b) => a && b, true)
+        const anySucceeded = ocrs.map(ocr => ocr.extracted).reduce((a,b) => a || b, false)
         if (!anySucceeded) {
             cmdReply.push(`Couldn't extract text from any images found`)
             return
@@ -436,6 +436,77 @@ async function handleOcrMention(twtr, tweet, targetTweet, cmdReply) {
     }
 }
 
+async function handleFetchMention(twtr, tweet, targetTweet, cmdReply) {
+    const images = Object.keys(getTweetImagesAndAlts(twtr, targetTweet));
+    const results = [];
+
+    for (let image of images) {
+        const parts = []
+        const alt = await fetchAltTextForUrl(image, "en")
+        let resultAlt;
+        let found;
+        if (alt) {
+            found = true;
+            if (alt.ocr) {
+                if (alt.ocr.length < 100) {
+                    parts.push(`OCR: ${alt.ocr}`)
+                } else {
+                    parts.push("Has long OCR available, try OCR as well")
+                }
+            }
+
+            for (let exactMatch of alt.exact) {
+                parts.push(`Exact: ${exactMatch.alt_text}`)
+            }
+
+            for (let fuzzyMatch of alt.fuzzy) {
+                parts.push(`${Math.floor(fuzzyMatch.score * 100)}% confidence: ${fuzzyMatch.alt_text}`)
+            }
+
+            resultAlt = parts.join("\n");
+            if (resultAlt.length > 1000) {
+                const andMore = "More results available, try searching in DMs or on alt-text.org"
+                const subset = []
+                for (let part of parts) {
+                    const lengthSoFar = subset.join("\n").length
+                    if (lengthSoFar + andMore.length + part.length + 1 < 1000) {
+                        subset.push(part)
+                    } else {
+                        break
+                    }
+                }
+                subset.push(andMore)
+                resultAlt = subset.join("\n")
+            }
+        } else {
+            found = false
+            resultAlt = "No alt text found."
+        }
+
+
+        const rawImage = await fetchImage(image)
+        if (rawImage) {
+            const mediaId = await uploadImageWithAltText(twtr, rawImage.data, resultAlt)
+            if (mediaId) {
+                results.push(mediaId)
+            } else {
+                console.log(`${ts()}: Failed to upload image for alt-text.org search: '${image}': '${resultAlt}'`)
+            }
+        } else {
+            console.log(`${ts()}: Failed to fetch image for alt-text.org search: '${image}'`)
+        }
+    }
+
+    if (results.length > 0) {
+        cmdReply.push({
+            text: "Search results in image descriptions",
+            media: results
+        })
+    } else {
+        cmdReply.push("No results found for any images, or error re-uploading them")
+    }
+}
+
 async function getTargetTweet(twtr, bareTweet, needsImages) {
     let targetTweet;
     let tweetTargetStr = "tweet";
@@ -549,7 +620,7 @@ async function handleMention(twtr, oauth, tweet) {
     const {
         targetTweet,
         tweetTargetStr
-    } = await getTargetTweet(twtr, tweet, text.match(/(ocr)|(extract text)|(save)|(^(\s*@\w+)*\s*@AltTextUtil\s*$)/i))
+    } = await getTargetTweet(twtr, tweet, text.match(/(ocr)|(extract text)|(save)|(search)|(fetch)|(^(\s*@\w+)*\s*@AltTextUtil\s*$)/i))
 
     if (tweetTargetStr === "no-images-found") {
         await reply(
@@ -599,6 +670,8 @@ async function handleMention(twtr, oauth, tweet) {
         } else {
             cmdReply.push(`@${targetTweet.user.screen_name} ` + explain);
         }
+    } else if (text.match(/(fetch)|(search)/i)) {
+        await handleFetchMention(twtr, tweet, targetTweet, cmdReply)
     } else {
         console.log(
             `${ts()}: Got tweet https://twitter.com/status/${tweet.user.screen_name}/${

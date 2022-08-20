@@ -23,16 +23,16 @@ async function saveAltTextForImage(token, url, lang, alt, userId) {
         })
     }).then(resp => {
         if (resp.ok) {
-            return true
+            return true;
         } else {
-            console.log(`${ts()}: Unsuccessful save for url '${url}': ${resp.status} ${resp.statusText}`)
-            return false
+            console.log(`${ts()}: Unsuccessful save for url '${url}': ${resp.status} ${resp.statusText}`);
+            return false;
         }
     }).catch(err => {
         console.log(`${ts()}: Failed to save alt for '${url}:`);
-        console.log(err)
+        console.log(err);
         return false;
-    })
+    });
 }
 
 async function fetchAltTextForTweet(twtr, tweetId) {
@@ -93,7 +93,7 @@ async function fetchAltTextForUrl(url, lang) {
     }).catch(err => {
         console.log(`${ts()}: Failed to fetch alt for '${url}: ${err}`);
         return null;
-    })
+    });
 }
 
 async function fetchAltTextForBase64(image, lang) {
