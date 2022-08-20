@@ -436,13 +436,15 @@ async function handleOcrMention(twtr, tweet, targetTweet, cmdReply) {
     }
 }
 
-async function handleFetchMention(twtr, tweet, targetTweet, cmdReply) {
+async function handleFetchMention(twtr, targetTweet, cmdReply) {
     const images = Object.keys(getTweetImagesAndAlts(twtr, targetTweet));
     const results = [];
 
     for (let image of images) {
+        console.log(`Checking image '${image}'`)
         const parts = []
         const alt = await fetchAltTextForUrl(image, "en")
+        console.log(`Alt found: '${JSON.stringify(alt)}'`)
         let resultAlt;
         let found;
         if (alt) {
@@ -671,7 +673,7 @@ async function handleMention(twtr, oauth, tweet) {
             cmdReply.push(`@${targetTweet.user.screen_name} ` + explain);
         }
     } else if (text.match(/(fetch)|(search)/i)) {
-        await handleFetchMention(twtr, tweet, targetTweet, cmdReply)
+        await handleFetchMention(twtr, targetTweet, cmdReply)
     } else {
         console.log(
             `${ts()}: Got tweet https://twitter.com/status/${tweet.user.screen_name}/${
