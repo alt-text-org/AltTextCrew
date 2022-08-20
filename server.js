@@ -440,14 +440,14 @@ async function handleFetchMention(twtr, targetTweet, cmdReply) {
     const images = Object.keys(getTweetImagesAndAlts(targetTweet));
     const results = [];
 
+    let foundAny = false;
     for (let image of images) {
         const parts = []
         const alt = await fetchAltTextForUrl(image, "en")
 
         let resultAlt;
-        let found;
         if (alt) {
-            found = true;
+            foundAny = true;
             if (alt.ocr) {
                 if (alt.ocr.length < 100) {
                     parts.push(`OCR: ${alt.ocr}`)
@@ -480,7 +480,6 @@ async function handleFetchMention(twtr, targetTweet, cmdReply) {
                 resultAlt = subset.join("\n")
             }
         } else {
-            found = false
             resultAlt = "No alt text found."
         }
 
@@ -498,7 +497,7 @@ async function handleFetchMention(twtr, targetTweet, cmdReply) {
         }
     }
 
-    if (results.length > 0) {
+    if (foundAny && results.length > 0) {
         cmdReply.push({
             text: "Search results in image descriptions",
             media: results
