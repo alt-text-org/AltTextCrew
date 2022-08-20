@@ -326,6 +326,8 @@ async function handleOcrMention(twtr, tweet, targetTweet, cmdReply) {
             split: splitText(ocr.text, 1000)
         }));
 
+        console.log("Split: " + JSON.stringify(splitOcrs))
+
         let auxImageIdx = 0;
         let imageGroups = [];
         let uploadFailures = false;
@@ -381,7 +383,7 @@ async function handleOcrMention(twtr, tweet, targetTweet, cmdReply) {
         let totalImagesToUpload = imageGroups
             .map(group => group.length)
             .reduce((prev, cur) => prev + cur);
-        console.log(`Image groups: ${JSON.stringify(imageGroups)}`);
+        console.log(`${ts()}: Image groups: ${JSON.stringify(imageGroups)}`);
 
         if (uploadFailures) {
             console.log(
