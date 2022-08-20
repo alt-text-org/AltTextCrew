@@ -438,6 +438,7 @@ async function handleOcrMention(twtr, tweet, targetTweet, cmdReply) {
 
 async function handleFetchMention(twtr, targetTweet, cmdReply) {
     const images = Object.keys(getTweetImagesAndAlts(twtr, targetTweet));
+    console.log(`Found images to search: ${JSON.stringify(images)}`)
     const results = [];
 
     for (let image of images) {
