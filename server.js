@@ -319,6 +319,12 @@ async function handleDMEvent(twtr, oauth, msg) {
 async function handleOcrMention(twtr, tweet, targetTweet, cmdReply) {
     let ocrs = await ocrTweetImages(twtr, targetTweet);
     if (ocrs) {
+        const anySucceeded = ocrs.map(ocr => ocr.extracted).reduce((a,b) => a && b, true)
+        if (!anySucceeded) {
+            cmdReply.push(`Couldn't extract text from any images found`)
+            return
+        }
+
         let splitOcrs = ocrs.map(ocr => ({
             img: ocr.img,
             text: ocr.text,

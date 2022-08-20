@@ -83,16 +83,16 @@ async function ocrTweetImages(twtr, tweet) {
                 return ocr(img)
                     .then(imgOcr => {
                         if (imgOcr) {
-                            return {img: img, text: imgOcr.text, locale: imgOcr.locale};
+                            return {img: img, text: imgOcr.text, locale: imgOcr.locale, extracted: true};
                         } else {
-                            return {img: img, text: "No text extracted", locale: "default"};
+                            return {img: img, text: "No text extracted", locale: "default", extracted: false};
                         }
                     })
                     .catch(e => {
                         console.log(
                             `Error fetching OCR for image ${img}: ${JSON.stringify(e)}`
                         );
-                        return {img: img, text: "Error extracting text", locale: "default"};
+                        return {img: img, text: "Error extracting text", locale: "default", extracted: false};
                     });
             })
         ).catch(err => {
