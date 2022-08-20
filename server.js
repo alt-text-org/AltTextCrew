@@ -438,14 +438,12 @@ async function handleOcrMention(twtr, tweet, targetTweet, cmdReply) {
 
 async function handleFetchMention(twtr, targetTweet, cmdReply) {
     const images = Object.keys(getTweetImagesAndAlts(targetTweet));
-    console.log(`Found images to search: ${JSON.stringify(images)}`)
     const results = [];
 
     for (let image of images) {
-        console.log(`Checking image '${image}'`)
         const parts = []
         const alt = await fetchAltTextForUrl(image, "en")
-        console.log(`Alt found: '${JSON.stringify(alt)}'`)
+
         let resultAlt;
         let found;
         if (alt) {
@@ -506,7 +504,7 @@ async function handleFetchMention(twtr, targetTweet, cmdReply) {
             media: results
         })
     } else {
-        cmdReply.push("No results found for any images, or error re-uploading them")
+        cmdReply.push("No results found for any images, or error re-uploading them. To help fill the database, sign up at https://alt-text.org/sign-up.html")
     }
 }
 
