@@ -39,7 +39,7 @@ async function fetchAltTextForTweet(twtr, tweetId) {
     let reply = [];
     let tweet = await getTweet(twtr, tweetId);
     if (tweet) {
-        let images = Object.keys(getTweetImagesAndAlts(twtr, tweet));
+        let images = Object.keys(getTweetImagesAndAlts(tweet));
         if (images.length > 0) {
             let fetched = await Promise.all(images.map((img, idx) => {
                 return fetchAltTextForUrl(img, tweet.lang || "en")
