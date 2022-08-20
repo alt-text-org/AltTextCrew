@@ -15,12 +15,15 @@ async function ocr(url) {
             return []
         });
     if (result && result.textAnnotations) {
-        console.log("textAnnotations: " + JSON.stringify(result.textAnnotations))
         const text = result.textAnnotations
             .filter(t => !!t.locale)
             .map(t => t.description)
             .join(" ")
             .replace(/(\r\n|\n|\r)/gm, " ");
+
+        if (!text) {
+            return null
+        }
 
         const locales = result.textAnnotations
             .filter(t => !!t.locale)
