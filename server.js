@@ -326,8 +326,6 @@ async function handleOcrMention(twtr, tweet, targetTweet, cmdReply) {
             split: splitText(ocr.text, 1000)
         }));
 
-        console.log("Split: " + JSON.stringify(splitOcrs))
-
         let auxImageIdx = 0;
         let imageGroups = [];
         let uploadFailures = false;
