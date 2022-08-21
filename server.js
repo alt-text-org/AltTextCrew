@@ -503,7 +503,8 @@ async function handleFetchMention(twtr, targetTweet, cmdReply) {
             media: results
         })
     } else {
-        cmdReply.push("No results found for any images, or error re-uploading them. To help fill the database, sign up at https://alt-text.org/sign-up.html")
+        cmdReply.push("No results found for any images, or error re-uploading them. To help fill the database, sign up " +
+            "at https://alt-text.org/sign-up.html, or include the #SaveAltText hashtag on your tweets with images")
     }
 }
 
