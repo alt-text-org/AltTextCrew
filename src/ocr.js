@@ -68,7 +68,7 @@ async function ocrRaw(rawImage) {
         result.responses[0].fullTextAnnotation &&
         result.responses[0].fullTextAnnotation.text
     ) {
-        const locales = result.textAnnotations
+        const locales = result.responses
             .filter(t => !!t.locale)
             .reduce((loc, t) => {
                 loc[t.locale] = (loc[t.locale] || 0) + 1
