@@ -78,7 +78,6 @@ async function ocrRaw(rawImage) {
             fullText.pages[0].property.detectedLanguages &&
             fullText.pages[0].property.detectedLanguages[0] &&
             fullText.pages[0].property.detectedLanguages[0].languageCode) {
-            console.log(JSON.stringify(fullText.pages[0].property.detectedLanguages))
             detectedLang = fullText.pages[0].property.detectedLanguages[0].languageCode
         }
 
