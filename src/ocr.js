@@ -3,6 +3,7 @@ const {createCanvas} = require("canvas");
 const {default: canvasTxt} = require('canvas-txt')
 
 const {ts, getTweetImagesAndAlts} = require("./util");
+const fs = require("fs");
 
 const visionClient = new vision.ImageAnnotatorClient();
 
@@ -68,6 +69,8 @@ async function ocrRaw(rawImage) {
         result.responses[0].fullTextAnnotation &&
         result.responses[0].fullTextAnnotation.text
     ) {
+        fs.writeFileSync("wat.json", JSON.stringify(result))
+
         const locales = result.responses
             .filter(t => !!t.locale)
             .reduce((loc, t) => {
