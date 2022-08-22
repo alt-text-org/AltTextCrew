@@ -159,7 +159,7 @@ async function ocrDMCmd(twtr, oauth, msg, text) {
     for (let text of ocrTexts) {
         if (text.text) {
             if (text.text.length > 1000) {
-                const split = splitText(text, 1000)
+                const split = splitText(text.text, 1000)
                 reply.push(split[0])
                 for (let i = 1; i < split.length; i++) {
                     const image = getAuxImage(text.locale, i + 1, split.length)
