@@ -68,9 +68,19 @@ async function ocrRaw(rawImage) {
         result.responses[0].fullTextAnnotation &&
         result.responses[0].fullTextAnnotation.text
     ) {
-        console.log(JSON.stringify(result.responses[0].fullTextAnnotation.detectedLanguages))
+        const locales = result.textAnnotations
+            .filter(t => !!t.locale)
+            .reduce((loc, t) => {
+                loc[t.locale] = (loc[t.locale] || 0) + 1
+                return loc
+            }, {})
+
+        const localeAndCount = Object.entries(locales)
+            .sort((entryA, entryB) => entryA[1] - entryB[1])[0] || ["default", 0]
+
+        console.log(JSON.stringify(localeAndCount))
         return {
-            locale: result.detectedLanguages || "default",
+            locale: localeAndCount[0] || "default",
             text: result.responses[0].fullTextAnnotation.text
         };
     } else {
