@@ -69,22 +69,22 @@ async function ocrRaw(rawImage) {
         result.responses[0].fullTextAnnotation &&
         result.responses[0].fullTextAnnotation.text
     ) {
-        fs.writeFileSync("wat.json", JSON.stringify(result))
+        const fullText = result.responses[0].fullTextAnnotation
 
-        const locales = result.responses
-            .filter(t => !!t.locale)
-            .reduce((loc, t) => {
-                loc[t.locale] = (loc[t.locale] || 0) + 1
-                return loc
-            }, {})
+        let detectedLang = "default"
+        if (fullText.pages &&
+            fullText.pages[0] &&
+            fullText.pages[0].property &&
+            fullText.pages[0].property.detectedLanguages &&
+            fullText.pages[0].property.detectedLanguages[0] &&
+            fullText.pages[0].property.detectedLanguages[0].languageCode) {
+            console.log(JSON.stringify(fullText.pages[0].property.detectedLanguages))
+            detectedLang = fullText.pages[0].property.detectedLanguages[0].languageCode
+        }
 
-        const localeAndCount = Object.entries(locales)
-            .sort((entryA, entryB) => entryA[1] - entryB[1])[0] || ["default", 0]
-
-        console.log(JSON.stringify(localeAndCount))
         return {
-            locale: localeAndCount[0] || "default",
-            text: result.responses[0].fullTextAnnotation.text
+            locale: detectedLang,
+            text: fullText.text
         };
     } else {
         console.log("No text found. Full response: " + JSON.stringify(result));
@@ -137,13 +137,14 @@ const additionalImageText = {
 
 const auxImageEdgeLength = 1000;
 const auxImageFontPixels = 100
+
 function getAuxImage(locale, num, total) {
     const canvas = createCanvas(auxImageEdgeLength, auxImageEdgeLength);
     const ctx = canvas.getContext('2d');
     const text = additionalImageText[locale] || additionalImageText.default
 
     ctx.fillStyle = "white"
-    ctx.fillRect(0,0, auxImageEdgeLength, auxImageEdgeLength)
+    ctx.fillRect(0, 0, auxImageEdgeLength, auxImageEdgeLength)
 
     ctx.fillStyle = "black"
     ctx.font = `bold ${auxImageFontPixels}px sans-serif`;
