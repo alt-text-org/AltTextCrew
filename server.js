@@ -112,8 +112,9 @@ async function ocrDMCmd(twtr, oauth, msg, text) {
     let rawImage = await extractMessageMedia(oauth, config.twitterToken, msg);
     if (rawImage) {
         let imageOcr = await ocrRaw(rawImage)
-            .catch(e => {
-                console.log("Error OCRing image: " + JSON.stringify(e));
+            .catch(err => {
+                console.log("Error OCRing raw image");
+                console.log(err)
                 return null;
             });
         if (imageOcr) {
@@ -135,8 +136,7 @@ async function ocrDMCmd(twtr, oauth, msg, text) {
             let tweet = await getTweet(twtr, tweetId);
             if (tweet) {
                 let ocrs = await ocrTweetImages(twtr, tweet);
-                let texts = ocrs.map(ocr => ocr.text);
-                ocrTexts.push(...texts);
+                ocrTexts.push(...ocrs);
             } else {
                 ocrTexts.push(`Couldn't fetch tweet: ${tweetId}`);
             }
@@ -146,28 +146,38 @@ async function ocrDMCmd(twtr, oauth, msg, text) {
     }
 
     if (text.match(/one reply/i)) {
-        return ocrTexts.map(ocr => ocr.text)
+        return ocrTexts.map(ocr => {
+            if (ocr.text) {
+                return ocr.text
+            } else {
+                return ocr
+            }
+        })
     }
 
     const reply = []
     for (let text of ocrTexts) {
-        if (text.length > 1000) {
-            const split = splitText(text, 1000)
-            reply.push(split[0])
-            for (let i = 1; i < split.length; i++) {
-                const image = getAuxImage(text.locale, i + 1, split.length)
-                const auxMediaId = await uploadMedia(twtr, image);
-                if (auxMediaId) {
-                    reply.push({
-                        text: split[i],
-                        mediaId: auxMediaId
-                    })
-                } else {
-                    reply.push("Image upload failed. Text: " + split[i])
+        if (text.text) {
+            if (text.length > 1000) {
+                const split = splitText(text, 1000)
+                reply.push(split[0])
+                for (let i = 1; i < split.length; i++) {
+                    const image = getAuxImage(text.locale, i + 1, split.length)
+                    const auxMediaId = await uploadMedia(twtr, image);
+                    if (auxMediaId) {
+                        reply.push({
+                            text: split[i],
+                            mediaId: auxMediaId
+                        })
+                    } else {
+                        reply.push("Image upload failed. Text: " + split[i])
+                    }
                 }
+            } else {
+                reply.push(text.text)
             }
         } else {
-            reply.push(text.text)
+            reply.push(text)
         }
     }
 
@@ -634,7 +644,7 @@ async function handleMention(twtr, oauth, tweet) {
 
     if (!text.match(/@AltTextUtil/i)) {
         console.log(
-            `${ts()}: Got mention, but it didn't actually contain my name.`
+            `${ts()}: Got mention, but it didn't actually contain my name: '${text}'`
         );
         return;
     }
