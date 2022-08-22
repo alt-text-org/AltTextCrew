@@ -61,6 +61,8 @@ async function ocrRaw(rawImage) {
             return [];
         });
 
+    console.log(JSON.stringify(result))
+
     if (
         result &&
         result.responses &&
@@ -68,7 +70,10 @@ async function ocrRaw(rawImage) {
         result.responses[0].fullTextAnnotation &&
         result.responses[0].fullTextAnnotation.text
     ) {
-        return result.responses[0].fullTextAnnotation.text;
+        return {
+            locale: result.locale || "default",
+            text: result.responses[0].fullTextAnnotation.text
+        };
     } else {
         console.log("No text found. Full response: " + JSON.stringify(result));
         return null;

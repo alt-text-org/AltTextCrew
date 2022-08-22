@@ -59,24 +59,55 @@ async function fetchListTweets(twtr, list) {
 }
 
 async function sendDM(twtr, userId, message) {
-    await twtr.directMessages
-        .eventsNew({
-            event: {
-                type: "message_create",
-                message_create: {
-                    target: {
-                        recipient_id: userId
-                    },
-                    message_data: {
-                        text: message
+    if (typeof message === "string") {
+        await twtr.directMessages
+            .eventsNew({
+                event: {
+                    type: "message_create",
+                    message_create: {
+                        target: {
+                            recipient_id: userId
+                        },
+                        message_data: {
+                            text: message
+                        }
                     }
                 }
-            }
-        })
-        .catch(err => {
-            console.log("DM Error: " + JSON.stringify(err));
-        });
-    console.log(`${ts()}: DMing: ${message}`);
+            })
+            .catch(err => {
+                console.log(`${ts()}: DM Error sending ${message}`);
+                console.log(err)
+            });
+        console.log(`${ts()}: DMing: '${message}'`);
+    } else if (typeof message === "object") {
+        await twtr.directMessages
+            .eventsNew({
+                event: {
+                    type: "message_create",
+                    message_create: {
+                        target: {
+                            recipient_id: userId
+                        },
+                        message_data: {
+                            text: message.text,
+                            attachment: {
+                                type: "media",
+                                media: {
+                                    id: message.mediaId
+                                }
+                            }
+                        }
+                    }
+                }
+            })
+            .catch(err => {
+                console.log(`${ts()}: DM Error sending ${message}`);
+                console.log(err)
+            });
+        console.log(`${ts()}: DMing: '${JSON.stringify(message)}'`);
+    } else {
+        console.log(`${ts()}: Got unexpected message type: ${typeof message}: '${JSON.stringify(message)}'`)
+    }
 }
 
 async function getUserId(twtr, userName) {

@@ -22,7 +22,7 @@ const {
     getTweet,
     sendDM,
     replyChain,
-    uploadImageWithAltText
+    uploadImageWithAltText, uploadMedia
 } = require("./src/twtr");
 const {ocr, ocrRaw, ocrTweetImages, getAuxImage, getResponseText} = require("./src/ocr");
 const {checkUserTweets, checkTweet} = require("./src/check");
@@ -107,7 +107,7 @@ async function describeDMCmd(twtr, oauth, msg, text) {
 }
 
 async function ocrDMCmd(twtr, oauth, msg, text) {
-    let reply = [];
+    let ocrTexts = [];
     let targets = await extractTargets(text);
     let rawImage = await extractMessageMedia(oauth, config.twitterToken, msg);
     if (rawImage) {
@@ -117,17 +117,17 @@ async function ocrDMCmd(twtr, oauth, msg, text) {
                 return null;
             });
         if (imageOcr) {
-            reply.push(imageOcr);
+            ocrTexts.push(imageOcr);
         } else {
-            reply.push("Couldn't extract text from attached image");
+            ocrTexts.push("Couldn't extract text from attached image");
         }
     } else if (targets.web.size > 0) {
         for (const url of targets.web) {
             let imgOcr = await ocr(url);
             if (imgOcr) {
-                reply.push(`${url}: ${imgOcr}`);
+                ocrTexts.push(imgOcr);
             } else {
-                reply.push(`${url}: No text extracted`);
+                ocrTexts.push(`${url}: No text extracted`);
             }
         }
     } else if (targets.tweet.size > 0) {
@@ -135,16 +135,40 @@ async function ocrDMCmd(twtr, oauth, msg, text) {
             let tweet = await getTweet(twtr, tweetId);
             if (tweet) {
                 let ocrs = await ocrTweetImages(twtr, tweet);
-                let annotated = ocrs.map(
-                    ocr => `${tweet.user.screen_name}'s tweet: ${ocr.text}`
-                );
-                reply.push(...annotated);
+                let texts = ocrs.map(ocr => ocr.text);
+                ocrTexts.push(...texts);
             } else {
-                reply.push(`Couldn't fetch tweet: ${tweetId}`);
+                ocrTexts.push(`Couldn't fetch tweet: ${tweetId}`);
             }
         }
     } else {
-        reply.push("I don't see anything to OCR");
+        ocrTexts.push("I don't see anything to OCR");
+    }
+
+    if (text.match(/one reply/i)) {
+        return ocrTexts.map(ocr => ocr.text)
+    }
+
+    const reply = []
+    for (let text of ocrTexts) {
+        if (text.length > 1000) {
+            const split = splitText(text, 1000)
+            reply.push(split[0])
+            for (let i = 1; i < split.length; i++) {
+                const image = getAuxImage(text.locale, i + 1, split.length)
+                const auxMediaId = await uploadMedia(twtr, image);
+                if (auxMediaId) {
+                    reply.push({
+                        text: split[i],
+                        mediaId: auxMediaId
+                    })
+                } else {
+                    reply.push("Image upload failed. Text: " + split[i])
+                }
+            }
+        } else {
+            reply.push(text.text)
+        }
     }
 
     return reply;
@@ -319,7 +343,7 @@ async function handleDMEvent(twtr, oauth, msg) {
 async function handleOcrMention(twtr, tweet, targetTweet, cmdReply) {
     let ocrs = await ocrTweetImages(twtr, targetTweet);
     if (ocrs) {
-        const anySucceeded = ocrs.map(ocr => ocr.extracted).reduce((a,b) => a || b, false)
+        const anySucceeded = ocrs.map(ocr => ocr.extracted).reduce((a, b) => a || b, false)
         if (!anySucceeded) {
             cmdReply.push(`Couldn't extract text from any images found`)
             return
@@ -332,7 +356,6 @@ async function handleOcrMention(twtr, tweet, targetTweet, cmdReply) {
             split: splitText(ocr.text, 1000)
         }));
 
-        let auxImageIdx = 0;
         let imageGroups = [];
         let uploadFailures = false;
         for (let i = 0; i < splitOcrs.length; i++) {
@@ -355,8 +378,6 @@ async function handleOcrMention(twtr, tweet, targetTweet, cmdReply) {
 
                 for (let j = 1; j < ocrRecord.split.length; j++) {
                     let auxImage = getAuxImage(ocrRecord.locale, j + 1, ocrRecord.split.length);
-                    auxImageIdx++;
-                    auxImageIdx = auxImageIdx % 3;
                     let auxMediaId = await uploadImageWithAltText(
                         twtr,
                         auxImage,
