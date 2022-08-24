@@ -1,5 +1,5 @@
 {
-  "name": "alt-text-crew",
+  "name": "alt-text-util",
   "version": "0.0.1",
   "description": "A Twitter bot providing a number of tools around alt text ",
   "main": "server.js",
