@@ -3,7 +3,7 @@ node_modules
 lists/
 users/
 enabled.json
-package-lock.json
 .env
 *~
 .*
+!.github/
