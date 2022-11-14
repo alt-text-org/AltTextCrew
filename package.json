@@ -13,7 +13,7 @@
     "canvas": "2.8.0",
     "canvas-txt": "^3.0.0",
     "datejs": "1.0.0-rc3",
-    "node-fetch": "2.6.6",
+    "node-fetch": "3.3.0",
     "node-html-parser": "^3.1.4",
     "oauth-1.0a": "^2.2.6",
     "twitter-api-client": "^1.5.2",
