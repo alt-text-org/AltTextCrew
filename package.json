@@ -10,7 +10,7 @@
     "@google-cloud/vision": "^2.3.1",
     "@stablelib/base64": "^1.0.1",
     "base64-arraybuffer": "^1.0.1",
-    "canvas": "2.8.0",
+    "canvas": "2.11.0",
     "canvas-txt": "^3.0.0",
     "datejs": "1.0.0-rc3",
     "node-fetch": "2.6.6",
